@@ -1,0 +1,8 @@
+{
+  "name": "Sistem Inventori dan Peminjaman Aset Sekolah",
+  "description": "Aplikasi manajemen inventaris aset per jurusan (RPL, ATPH, TBSM) dan sistem peminjaman dengan persetujuan bertingkat.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
+
