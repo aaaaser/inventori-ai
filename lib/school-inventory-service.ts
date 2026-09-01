@@ -33,6 +33,7 @@ import {
   Barang,
 } from './types';
 import { UserRole, hasPermission } from './rbac';
+import { getDataScope, canAccessJurusan, getEffectiveJurusanFilter } from './data-scope';
 
 // Hash of default development passwords created with bcrypt salt 10
 // Precalculated hashes for fast startup
@@ -1008,30 +1009,39 @@ export async function generateNextUnitCodes(
 // ASSET MANAGEMENT (CRUD & INVENTORY)
 // ----------------------------------------------------
 
-export async function getAllAssets(filters?: {
-  jurusanId?: number;
-  jurusanKode?: string;
-  kategoriId?: number;
-  kategoriName?: string;
-  ruanganId?: number;
-  kondisi?: string;
-  status?: string;
-  search?: string;
-  tahunPerolehan?: number;
-}): Promise<AssetData[]> {
+export async function getAllAssets(
+  filters?: {
+    jurusanId?: number;
+    jurusanKode?: string;
+    kategoriId?: number;
+    kategoriName?: string;
+    ruanganId?: number;
+    kondisi?: string;
+    status?: string;
+    search?: string;
+    tahunPerolehan?: number;
+  },
+  actor?: UserSession | null
+): Promise<AssetData[]> {
   await initializeMemoryStore();
 
   let result = [...memoryStore.assets];
 
-  if (filters?.jurusanId) {
-    const jur = memoryStore.jurusan.find((j) => j.id === filters.jurusanId);
-    if (jur) {
-      result = result.filter((a) => a.jurusan_kode === jur.kode);
+  // Enforce Data Scope for KAKOM & LABORAN
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanKode) {
+    result = result.filter((a) => a.jurusan_kode === scope.jurusanKode);
+  } else {
+    if (filters?.jurusanId) {
+      const jur = memoryStore.jurusan.find((j) => j.id === filters.jurusanId);
+      if (jur) {
+        result = result.filter((a) => a.jurusan_kode === jur.kode);
+      }
     }
-  }
 
-  if (filters?.jurusanKode && filters.jurusanKode !== 'SEMUA') {
-    result = result.filter((a) => a.jurusan_kode === filters.jurusanKode);
+    if (filters?.jurusanKode && filters.jurusanKode !== 'SEMUA') {
+      result = result.filter((a) => a.jurusan_kode === filters.jurusanKode);
+    }
   }
 
   if (filters?.kategoriName && filters.kategoriName !== 'Semua Kategori' && filters.kategoriName !== 'SEMUA') {
@@ -1073,10 +1083,18 @@ export async function getAllAssets(filters?: {
   return result;
 }
 
-export async function getAssetById(id: number): Promise<AssetData | null> {
+export async function getAssetById(id: number, actor?: UserSession | null): Promise<AssetData | null> {
   await initializeMemoryStore();
   const asset = memoryStore.assets.find((a) => a.id === id);
-  return asset || null;
+  if (!asset) return null;
+
+  // Enforce Data Scope
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanKode && asset.jurusan_kode !== scope.jurusanKode) {
+    return null;
+  }
+
+  return asset;
 }
 
 export async function createAssetWithUnits(
@@ -1102,18 +1120,21 @@ export async function createAssetWithUnits(
   await initializeMemoryStore();
 
   if (actor && !hasPermission(actor.role, 'asset.create')) {
-    return { success: false, message: 'Anda tidak memiliki hak akses untuk menambah aset.' };
+    return { success: false, message: 'Role Anda tidak memiliki hak akses untuk menambah aset.' };
   }
 
   // Kakom & Laboran only add for their own Jurusan
-  if (actor && (actor.role === 'LABORAN' || actor.role === 'KAKOM')) {
-    if (actor.jurusan_id && actor.jurusan_id !== data.jurusan_id) {
-      return { success: false, message: 'Anda hanya dapat mengelola aset untuk jurusan Anda sendiri.' };
-    }
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanId) {
+    data.jurusan_id = scope.jurusanId;
   }
 
   const jur = memoryStore.jurusan.find((j) => j.id === data.jurusan_id);
   if (!jur) return { success: false, message: 'Jurusan tidak valid.' };
+
+  if (scope.isScoped && scope.jurusanKode && jur.kode !== scope.jurusanKode) {
+    return { success: false, message: `Anda hanya dapat menambah aset untuk jurusan Anda sendiri (${scope.jurusanKode}).` };
+  }
 
   const kat = data.kategori_id
     ? memoryStore.categories.find((c) => c.id === data.kategori_id)
@@ -1235,10 +1256,9 @@ export async function updateAsset(
   if (!asset) return { success: false, message: 'Aset tidak ditemukan.' };
 
   // Kakom/Laboran check
-  if (actor && (actor.role === 'LABORAN' || actor.role === 'KAKOM')) {
-    if (actor.jurusan_kode && asset.jurusan_kode !== actor.jurusan_kode) {
-      return { success: false, message: 'Anda hanya dapat mengedit aset di jurusan Anda sendiri.' };
-    }
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanKode && asset.jurusan_kode !== scope.jurusanKode) {
+    return { success: false, message: `Anda hanya dapat mengedit aset di jurusan Anda sendiri (${scope.jurusanKode}).` };
   }
 
   const now = new Date().toISOString();
@@ -1328,10 +1348,9 @@ export async function deleteAsset(
     return { success: false, message: 'Tidak dapat menghapus aset yang sedang dalam status dipinjam.' };
   }
 
-  if (actor && (actor.role === 'LABORAN' || actor.role === 'KAKOM')) {
-    if (actor.jurusan_kode && asset.jurusan_kode !== actor.jurusan_kode) {
-      return { success: false, message: 'Anda hanya dapat menghapus aset di jurusan Anda sendiri.' };
-    }
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanKode && asset.jurusan_kode !== scope.jurusanKode) {
+    return { success: false, message: `Anda hanya dapat menghapus aset di jurusan Anda sendiri (${scope.jurusanKode}).` };
   }
 
   memoryStore.assets.splice(idx, 1);
