@@ -16,17 +16,14 @@ export async function GET(req: NextRequest) {
       ? parseInt(searchParams.get('user_id')!, 10)
       : undefined;
 
-    // Kakom only sees borrowings in their department by default
-    let filterJurusan = jurusanKode;
-    if (user?.role === 'KAKOM' && user.jurusan_kode) {
-      filterJurusan = user.jurusan_kode;
-    }
-
-    const borrowings = await getAllBorrowings({
-      jurusanKode: filterJurusan,
-      status,
-      userId,
-    });
+    const borrowings = await getAllBorrowings(
+      {
+        jurusanKode,
+        status,
+        userId,
+      },
+      user || undefined
+    );
 
     return NextResponse.json({
       success: true,

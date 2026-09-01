@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBarangById, updateBarang, deleteBarang } from '@/lib/barang-service';
+import { getSessionUserFromRequest } from '@/lib/auth-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getSessionUserFromRequest(request);
     const { id: rawId } = await params;
     const id = parseInt(rawId, 10);
     if (isNaN(id)) {
@@ -17,7 +19,7 @@ export async function GET(
       );
     }
 
-    const item = await getBarangById(id);
+    const item = await getBarangById(id, user || undefined);
     if (!item) {
       return NextResponse.json(
         { success: false, message: 'Data tidak ditemukan' },
@@ -43,6 +45,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getSessionUserFromRequest(request);
     const { id: rawId } = await params;
     const id = parseInt(rawId, 10);
     if (isNaN(id)) {
@@ -53,7 +56,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const result = await updateBarang(id, body);
+    const result = await updateBarang(id, body, user || undefined);
 
     if (!result.success) {
       return NextResponse.json(
@@ -85,6 +88,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getSessionUserFromRequest(request);
     const { id: rawId } = await params;
     const id = parseInt(rawId, 10);
     if (isNaN(id)) {
@@ -94,7 +98,7 @@ export async function DELETE(
       );
     }
 
-    const result = await deleteBarang(id);
+    const result = await deleteBarang(id, user || undefined);
     if (!result.success) {
       return NextResponse.json(
         { success: false, message: result.message || 'Data tidak ditemukan' },

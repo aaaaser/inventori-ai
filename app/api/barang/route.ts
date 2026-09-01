@@ -1,17 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllBarang, createBarang } from '@/lib/barang-service';
+import { getSessionUserFromRequest } from '@/lib/auth-server';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await getSessionUserFromRequest(request);
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
     const kategori = searchParams.get('kategori') || '';
     const kondisi = searchParams.get('kondisi') || '';
     const sort = searchParams.get('sort') || 'terbaru';
+    const jurusan = searchParams.get('jurusan') || '';
 
-    const records = await getAllBarang({ search, kategori, kondisi, sort });
+    const records = await getAllBarang(
+      { search, kategori, kondisi, sort, jurusan },
+      user || undefined
+    );
 
     return NextResponse.json({
       success: true,
@@ -28,8 +34,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getSessionUserFromRequest(request);
     const body = await request.json();
-    const result = await createBarang(body);
+    const result = await createBarang(body, user || undefined);
 
     if (!result.success) {
       return NextResponse.json(

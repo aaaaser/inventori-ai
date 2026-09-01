@@ -8,10 +8,11 @@ import {
 import { getSessionUserFromRequest, checkRoutePermission } from '@/lib/auth-server';
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getSessionUserFromRequest(req);
     const { id } = await params;
     const numId = parseInt(id, 10);
     if (isNaN(numId)) {
@@ -21,7 +22,7 @@ export async function GET(
       );
     }
 
-    const asset = await getAssetById(numId);
+    const asset = await getAssetById(numId, user || undefined);
     if (!asset) {
       return NextResponse.json(
         { success: false, message: 'Aset tidak ditemukan.', error: 'NOT_FOUND' },
@@ -29,7 +30,7 @@ export async function GET(
       );
     }
 
-    const histories = await getAssetHistories(numId);
+    const histories = await getAssetHistories(numId, user || undefined);
 
     return NextResponse.json({
       success: true,

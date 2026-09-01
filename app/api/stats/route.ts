@@ -1,11 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getStats } from '@/lib/barang-service';
+import { getSessionUserFromRequest } from '@/lib/auth-server';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const stats = await getStats();
+    const user = await getSessionUserFromRequest(request);
+    const stats = await getStats(user || undefined);
     return NextResponse.json({
       success: true,
       data: stats,

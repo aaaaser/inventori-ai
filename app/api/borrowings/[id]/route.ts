@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBorrowingById } from '@/lib/school-inventory-service';
+import { getSessionUserFromRequest } from '@/lib/auth-server';
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getSessionUserFromRequest(req);
     const { id } = await params;
     const numId = parseInt(id, 10);
     if (isNaN(numId)) {
@@ -15,7 +17,7 @@ export async function GET(
       );
     }
 
-    const borrowing = await getBorrowingById(numId);
+    const borrowing = await getBorrowingById(numId, user || undefined);
     if (!borrowing) {
       return NextResponse.json(
         { success: false, message: 'Data pengajuan peminjaman tidak ditemukan.', error: 'NOT_FOUND' },

@@ -35,12 +35,27 @@ export function getDataScope(user: UserSession | null | undefined): DataScope {
 
   // KAKOM & LABORAN are strictly department-scoped
   if (user.role === 'KAKOM' || user.role === 'LABORAN') {
+    let jId = user.jurusan_id;
+    let jKode = user.jurusan_kode;
+
+    if (!jKode && jId) {
+      if (jId === 1) jKode = 'RPL';
+      else if (jId === 2) jKode = 'ATPH';
+      else if (jId === 3) jKode = 'TBSM';
+    }
+
+    if (!jId && jKode) {
+      if (jKode === 'RPL') jId = 1;
+      else if (jKode === 'ATPH') jId = 2;
+      else if (jKode === 'TBSM') jId = 3;
+    }
+
     return {
       type: 'JURUSAN',
       isScoped: true,
       role: user.role,
-      jurusanId: user.jurusan_id,
-      jurusanKode: user.jurusan_kode,
+      jurusanId: jId,
+      jurusanKode: jKode,
       canAccessAllDepartments: false,
     };
   }

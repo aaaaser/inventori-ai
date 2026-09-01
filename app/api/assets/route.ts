@@ -19,14 +19,17 @@ export async function GET(req: NextRequest) {
       ? parseInt(searchParams.get('ruangan_id')!, 10)
       : undefined;
 
-    const assets = await getAllAssets({
-      jurusanKode,
-      kategoriName: kategori,
-      kondisi,
-      status,
-      search,
-      ruanganId,
-    });
+    const assets = await getAllAssets(
+      {
+        jurusanKode,
+        kategoriName: kategori,
+        kondisi,
+        status,
+        search,
+        ruanganId,
+      },
+      user || undefined
+    );
 
     return NextResponse.json({
       success: true,

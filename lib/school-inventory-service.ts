@@ -1372,22 +1372,31 @@ export async function deleteAsset(
 // BORROWING & WORKFLOW APPROVAL ENGINE
 // ----------------------------------------------------
 
-export async function getAllBorrowings(filters?: {
-  jurusanId?: number;
-  jurusanKode?: string;
-  userId?: number;
-  status?: string;
-}): Promise<BorrowingData[]> {
+export async function getAllBorrowings(
+  filters?: {
+    jurusanId?: number;
+    jurusanKode?: string;
+    userId?: number;
+    status?: string;
+  },
+  actor?: UserSession | null
+): Promise<BorrowingData[]> {
   await initializeMemoryStore();
 
   let result = [...memoryStore.borrowings];
 
-  if (filters?.jurusanId) {
-    result = result.filter((b) => b.jurusan_id === filters.jurusanId);
-  }
+  // Enforce Data Scope for KAKOM & LABORAN
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanKode) {
+    result = result.filter((b) => b.jurusan_kode === scope.jurusanKode);
+  } else {
+    if (filters?.jurusanId) {
+      result = result.filter((b) => b.jurusan_id === filters.jurusanId);
+    }
 
-  if (filters?.jurusanKode && filters.jurusanKode !== 'SEMUA') {
-    result = result.filter((b) => b.jurusan_kode === filters.jurusanKode);
+    if (filters?.jurusanKode && filters.jurusanKode !== 'SEMUA') {
+      result = result.filter((b) => b.jurusan_kode === filters.jurusanKode);
+    }
   }
 
   if (filters?.userId) {
@@ -1402,10 +1411,18 @@ export async function getAllBorrowings(filters?: {
   return result;
 }
 
-export async function getBorrowingById(id: number): Promise<BorrowingData | null> {
+export async function getBorrowingById(id: number, actor?: UserSession | null): Promise<BorrowingData | null> {
   await initializeMemoryStore();
   const b = memoryStore.borrowings.find((item) => item.id === id);
-  return b || null;
+  if (!b) return null;
+
+  // Enforce Data Scope
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanKode && b.jurusan_kode !== scope.jurusanKode) {
+    return null;
+  }
+
+  return b;
 }
 
 export async function createBorrowingRequest(
@@ -1426,20 +1443,27 @@ export async function createBorrowingRequest(
     return { success: false, message: 'Hanya Laboran atau Super Admin yang dapat membuat pengajuan peminjaman.' };
   }
 
-  if (actor.role === 'LABORAN' && actor.jurusan_id && actor.jurusan_id !== data.jurusan_id) {
-    return { success: false, message: 'Laboran hanya dapat membuat pengajuan untuk jurusannya sendiri.' };
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanId) {
+    data.jurusan_id = scope.jurusanId;
   }
 
   if (!data.asset_ids || data.asset_ids.length === 0) {
     return { success: false, message: 'Pilih minimal 1 unit aset yang akan dipinjam.' };
   }
 
-  // Validate selected assets availability
+  // Validate selected assets availability and department scope
   const selectedAssets: AssetData[] = [];
   for (const aId of data.asset_ids) {
     const ast = memoryStore.assets.find((a) => a.id === aId);
     if (!ast) {
       return { success: false, message: `Aset dengan ID #${aId} tidak ditemukan.` };
+    }
+    if (scope.isScoped && scope.jurusanKode && ast.jurusan_kode !== scope.jurusanKode) {
+      return {
+        success: false,
+        message: `Aset ${ast.kode_barang} berasal dari jurusan lain (${ast.jurusan_kode}) dan tidak dapat dipinjam.`,
+      };
     }
     if (ast.status !== 'TERSEDIA') {
       return {
@@ -1782,6 +1806,11 @@ export async function handoverBorrowing(
   const b = memoryStore.borrowings.find((item) => item.id === borrowingId);
   if (!b) return { success: false, message: 'Pengajuan tidak ditemukan.' };
 
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanKode && b.jurusan_kode !== scope.jurusanKode) {
+    return { success: false, message: `Laboran hanya dapat menyerahterimakan barang pada jurusannya sendiri (${scope.jurusanKode}).` };
+  }
+
   if (b.status !== 'DISETUJUI') {
     return { success: false, message: 'Barang hanya dapat diserahterimakan setelah berstatus DISETUJUI.' };
   }
@@ -1840,6 +1869,11 @@ export async function returnBorrowing(
 
   const b = memoryStore.borrowings.find((item) => item.id === borrowingId);
   if (!b) return { success: false, message: 'Pengajuan tidak ditemukan.' };
+
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanKode && b.jurusan_kode !== scope.jurusanKode) {
+    return { success: false, message: `Laboran hanya dapat memproses pengembalian barang pada jurusannya sendiri (${scope.jurusanKode}).` };
+  }
 
   if (b.status !== 'DIPINJAM' && b.status !== 'DISETUJUI') {
     return { success: false, message: 'Pengajuan tidak dalam status peminjaman aktif.' };
@@ -1952,12 +1986,24 @@ export async function getAuditLogs(): Promise<AuditLogData[]> {
   return memoryStore.auditLogs;
 }
 
-export async function getAssetHistories(assetId?: number): Promise<AssetHistoryData[]> {
+export async function getAssetHistories(assetId?: number, actor?: UserSession | null): Promise<AssetHistoryData[]> {
   await initializeMemoryStore();
-  if (assetId) {
-    return memoryStore.assetHistories.filter((h) => h.asset_id === assetId);
+  let list = memoryStore.assetHistories;
+
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanKode) {
+    const allowedAssetIds = new Set(
+      memoryStore.assets
+        .filter((a) => a.jurusan_kode === scope.jurusanKode)
+        .map((a) => a.id)
+    );
+    list = list.filter((h) => allowedAssetIds.has(h.asset_id));
   }
-  return memoryStore.assetHistories;
+
+  if (assetId) {
+    return list.filter((h) => h.asset_id === assetId);
+  }
+  return list;
 }
 
 // ----------------------------------------------------
@@ -1969,14 +2015,16 @@ export async function getInventoryStats(user?: UserSession | null): Promise<Stat
 
   let assetsList = [...memoryStore.assets];
   let borrowingsList = [...memoryStore.borrowings];
+  let assetGroupsList = [...memoryStore.assetGroups];
 
-  // If Kakom / Laboran, show their department stats or all depending on filter
-  if (user && (user.role === 'KAKOM' || user.role === 'LABORAN') && user.jurusan_kode) {
-    assetsList = assetsList.filter((a) => a.jurusan_kode === user.jurusan_kode);
-    borrowingsList = borrowingsList.filter((b) => b.jurusan_kode === user.jurusan_kode);
+  const scope = getDataScope(user);
+  if (scope.isScoped && scope.jurusanKode) {
+    assetsList = assetsList.filter((a) => a.jurusan_kode === scope.jurusanKode);
+    borrowingsList = borrowingsList.filter((b) => b.jurusan_kode === scope.jurusanKode);
+    assetGroupsList = assetGroupsList.filter((g) => g.jurusan_kode === scope.jurusanKode);
   }
 
-  const totalBarang = memoryStore.assetGroups.length;
+  const totalBarang = assetGroupsList.length;
   const totalUnits = assetsList.length;
 
   let baikCount = 0;
@@ -2018,8 +2066,8 @@ export async function getInventoryStats(user?: UserSession | null): Promise<Stat
   }
 
   // Stock alerts on asset groups where available units <= 2
-  for (const ag of memoryStore.assetGroups) {
-    const groupUnits = memoryStore.assets.filter((a) => a.asset_group_id === ag.id);
+  for (const ag of assetGroupsList) {
+    const groupUnits = assetsList.filter((a) => a.asset_group_id === ag.id);
     const available = groupUnits.filter((a) => a.status === 'TERSEDIA').length;
     if (available <= 2 && groupUnits.length > 0) {
       stokKritis.push({

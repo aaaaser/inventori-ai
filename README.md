@@ -14,12 +14,13 @@ Aplikasi web modern berbasis **Next.js 15 App Router**, **TypeScript**, **Tailwi
 7. [Inisialisasi & Migrasi Database](#inisialisasi--migrasi-database)
 8. [Daftar Akun Pengguna Default (Seed User)](#daftar-akun-pengguna-default-seed-user)
 9. [Matriks Hak Akses & Role (RBAC)](#matriks-hak-akses--role-rbac)
-10. [Alur & Siklus Hidup Peminjaman Aset](#alur--siklus-hidup-peminjaman-aset)
-11. [Format Penomoran Kode Aset & Unit](#format-penomoran-kode-aset--unit)
-12. [Struktur Database & Skema Relasional](#struktur-database--skema-relasional)
-13. [Dokumentasi REST API](#dokumentasi-rest-api)
-14. [Panduan Skenario Pengujian (Testing)](#panduan-skenario-pengujian-testing)
-15. [Catatan Keamanan Produksi](#catatan-keamanan-produksi)
+10. [Aturan Pembatasan Data Berdasarkan Jurusan (Data Access Scope)](#aturan-pembatasan-data-berdasarkan-jurusan-data-access-scope)
+11. [Alur & Siklus Hidup Peminjaman Aset](#alur--siklus-hidup-peminjaman-aset)
+12. [Format Penomoran Kode Aset & Unit](#format-penomoran-kode-aset--unit)
+13. [Struktur Database & Skema Relasional](#struktur-database--skema-relasional)
+14. [Dokumentasi REST API](#dokumentasi-rest-api)
+15. [Panduan Skenario Pengujian (Testing)](#panduan-skenario-pengujian-testing)
+16. [Catatan Keamanan Produksi](#catatan-keamanan-produksi)
 
 ---
 
@@ -153,22 +154,51 @@ Sistem menyediakan 10 akun bawaan untuk pengujian alur bisnis dan verifikasi hak
 
 | Hak Akses / Kemampuan | `SUPER_ADMIN` | `OPERATOR` | `KEPALA_SEKOLAH` | `WAKA_SARPRAS` | `KAKOM` | `LABORAN` |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Melihat Dashboard & Statistik** |  |  |  |  |  |  |
-| **Melihat Katalog Aset & Stok** |  |  |  |  |  |  |
+| **Melihat Dashboard & Statistik** |  |  |  |  |  (Khusus Jurusan) |  (Khusus Jurusan) |
+| **Melihat Katalog Aset & Stok** |  |  |  |  |  (Khusus Jurusan) |  (Khusus Jurusan) |
 | **Tambah & Edit Aset / Unit** |  |  | ❌ | ❌ | ❌ |  (Khusus Jurusannya) |
 | **Hapus Data Aset** |  | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Ajukan Peminjaman Barang** |  |  | ❌ | ❌ | ❌ |  |
+| **Ajukan Peminjaman Barang** |  |  | ❌ | ❌ | ❌ |  (Khusus Jurusan) |
 | **Approval Tahap 1 (Kakom)** |  | ❌ | ❌ | ❌ |  (Jurusannya) | ❌ |
 | **Approval Tahap 2 (Sarpras)** |  | ❌ | ❌ |  | ❌ | ❌ |
 | **Approval Tahap 3 (Kepsek)** |  | ❌ |  | ❌ | ❌ | ❌ |
-| **Serah Terima Fisik (Mulai Pinjam)** |  |  | ❌ | ❌ | ❌ |  |
-| **Proses Pengembalian Barang** |  |  | ❌ | ❌ | ❌ |  |
+| **Serah Terima Fisik (Mulai Pinjam)** |  |  | ❌ | ❌ | ❌ |  (Khusus Jurusan) |
+| **Proses Pengembalian Barang** |  |  | ❌ | ❌ | ❌ |  (Khusus Jurusan) |
 | **Manajemen Pengguna (User CRUD)** |  | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Melihat Audit Log Sistem** |  |  |  |  |  | ❌ |
 
 ---
 
-## 10. Alur & Siklus Hidup Peminjaman Aset
+## 10. Aturan Pembatasan Data Berdasarkan Jurusan (Data Access Scope)
+
+Sistem menerapkan prinsip **Isolasi Data Berdasarkan Jurusan** di level server-side, API, dan query database:
+
+> **Prinsip Utama**:
+> * **ROLE**: Menentukan *apa yang boleh dilakukan* (kewenangan aksi / fitur / tombol).
+> * **JURUSAN**: Menentukan *data mana yang boleh diakses* (lingkup aset, kelompok barang, histori, dan pengajuan).
+
+### Matriks Cakupan Data (Data Scope Matrix)
+
+| Role | Cakupan Data Inventori & Peminjaman | Jurusan yang Diakses |
+|---|---|---|
+| `SUPER_ADMIN` | **Semua Jurusan** | RPL, ATPH, TBSM |
+| `OPERATOR` | **Semua Jurusan** | RPL, ATPH, TBSM |
+| `KEPALA_SEKOLAH` | **Semua Jurusan** | RPL, ATPH, TBSM |
+| `WAKA_SARPRAS` | **Semua Jurusan** | RPL, ATPH, TBSM |
+| `KAKOM` | **Hanya Jurusannya** | Terkunci sesuai `authenticated_user.jurusan_id` |
+| `LABORAN` | **Hanya Jurusannya** | Terkunci sesuai `authenticated_user.jurusan_id` |
+
+### Ketentuan Teknis & Keamanan:
+1. **Server-Authoritative Enforcement**: Backend tidak mempercayai parameter `jurusan_id` yang dikirim dari frontend. Lingkup akses murni ditentukan oleh data sesi otentikasi (`authenticated_user.jurusan_id` & `jurusan_kode`).
+2. **Isolasi Query Database & Memory Store**: Setiap pemanggilan query daftar barang (`/api/barang`, `/api/assets`), detail barang, riwayat mutasi, pengajuan peminjaman (`/api/borrowings`), dan agregasi statistik (`/api/stats`) secara otomatis diinjeksi filter `WHERE jurusan_id = :userJurusanId` untuk role `KAKOM` dan `LABORAN`.
+3. **Pencegahan Akses Antar Jurusan**:
+   - Kakom RPL hanya dapat melihat kode `BRG-RPL-*`, dilarang melihat `BRG-ATPH-*` atau `BRG-TBSM-*`.
+   - Laboran ATPH hanya dapat menambah atau mengajukan aset untuk jurusan ATPH.
+   - Kakom hanya dapat menyetujui (`approve`) atau menolak (`reject`) permohonan peminjaman yang berasal dari jurusannya sendiri.
+
+---
+
+## 11. Alur & Siklus Hidup Peminjaman Aset
 
 Proses peminjaman aset sekolah diatur melalui **4 Tahap Otorisasi Resmi**:
 
