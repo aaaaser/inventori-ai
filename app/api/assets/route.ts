@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
         kategori_id: kategori_id ? Number(kategori_id) : undefined,
         kategori_name,
         ruangan_id: ruangan_id ? Number(ruangan_id) : undefined,
-        ruangan_name,
+        ruangan_nama: ruangan_name || body.ruangan_nama || body.ruangan,
         merk,
         tipe,
         jumlah: jumlah ? Number(jumlah) : 1,

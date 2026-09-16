@@ -16,12 +16,14 @@ import {
   CheckCircle2,
   Clock,
   Building2,
+  QrCode,
 } from 'lucide-react';
 import { Barang, StatsData } from '@/lib/types';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { BarangCard } from '@/components/barang/BarangCard';
 import { Dialog } from '@/components/ui/Dialog';
+import { QrScannerModal } from '@/components/qr/QrScannerModal';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Loading } from '@/components/ui/Loading';
 import { useToast } from '@/components/ui/Toast';
@@ -35,6 +37,9 @@ export default function DashboardPage() {
   const [recentItems, setRecentItems] = useState<Barang[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
+
+  // QR Scanner modal state
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   // Delete dialog state
   const [deleteTarget, setDeleteTarget] = useState<Barang | null>(null);
@@ -144,6 +149,17 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            id="btn-scan-qr-dashboard"
+            variant="outline"
+            size="sm"
+            onClick={() => setIsScannerOpen(true)}
+            leftIcon={<QrCode className="w-3.5 h-3.5 text-neutral-800 dark:text-neutral-200" />}
+            className="w-full sm:w-auto"
+          >
+            Scan QR Barang
+          </Button>
+
           {canCreateAsset && (
             <Link href="/barang/tambah">
               <Button
@@ -379,6 +395,12 @@ export default function DashboardPage() {
           </div>
         )}
       </Dialog>
+
+      {/* QR Code Scanner Modal */}
+      <QrScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+      />
     </div>
   );
 }

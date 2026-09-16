@@ -12,10 +12,12 @@ import {
   ShieldCheck,
   Zap,
   RefreshCw,
+  QrCode,
 } from 'lucide-react';
 import { StatsData } from '@/lib/types';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { QrScannerModal } from '@/components/qr/QrScannerModal';
 import { useAuth } from '@/lib/auth-context';
 
 export default function LandingPage() {
@@ -23,6 +25,7 @@ export default function LandingPage() {
   const [stats, setStats] = useState<StatsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   const fetchStats = async () => {
     try {
@@ -71,7 +74,18 @@ export default function LandingPage() {
         </p>
 
         {/* CTA Button */}
-        <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+        <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5">
+          <Button
+            id="btn-scan-qr-landing"
+            variant="outline"
+            size="lg"
+            onClick={() => setIsScannerOpen(true)}
+            className="w-full sm:w-auto px-5 py-2.5 font-medium flex items-center justify-center gap-2"
+            leftIcon={<QrCode className="w-4 h-4 text-neutral-800 dark:text-neutral-200" />}
+          >
+            Scan QR Barang
+          </Button>
+
           <Link
             id="btn-landing-enter"
             href={isAuthenticated ? '/dashboard' : '/login'}
@@ -94,7 +108,7 @@ export default function LandingPage() {
                 size="lg"
                 className="w-full sm:w-auto px-4 py-2.5 font-medium"
               >
-                Lihat Katalog Barang
+                Lihat Katalog
               </Button>
             </Link>
           )}
@@ -257,6 +271,12 @@ export default function LandingPage() {
       <footer className="pt-4 text-center text-xs text-neutral-400 font-mono border-t border-neutral-100 dark:border-neutral-900">
         Sistem Inventaris &copy; {new Date().getFullYear()} · Manajemen Aset & Logistik
       </footer>
+
+      {/* QR Scanner Modal */}
+      <QrScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+      />
     </div>
   );
 }

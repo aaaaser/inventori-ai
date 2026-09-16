@@ -1,57 +1,53 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Plus, RefreshCw, Package } from 'lucide-react';
-import { Barang } from '@/lib/types';
+import {
+  Plus,
+  RefreshCw,
+  LayoutGrid,
+  Table as TableIcon,
+  Layers,
+  QrCode,
+} from 'lucide-react';
+import { Barang, UserSession } from '@/lib/types';
 import { Button } from '@/components/ui/Button';
+import { BarangDataTable } from '@/components/barang/BarangDataTable';
 import { BarangCard } from '@/components/barang/BarangCard';
-import { BarangSearch } from '@/components/barang/BarangSearch';
-import { Dialog } from '@/components/ui/Dialog';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { Loading } from '@/components/ui/Loading';
+import { QrScannerModal } from '@/components/qr/QrScannerModal';
 import { useToast } from '@/components/ui/Toast';
 
 export default function BarangPage() {
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
   const [items, setItems] = useState<Barang[]>([]);
-  const [kategoriList, setKategoriList] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
-
-  // Search & Filter state
-  const [search, setSearch] = useState('');
-  const [kategori, setKategori] = useState('all');
-  const [kondisi, setKondisi] = useState('all');
-  const [sort, setSort] = useState('terbaru');
-
-  // Delete dialog state
-  const [deleteTarget, setDeleteTarget] = useState<Barang | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [viewMode, setViewMode] = useState<'datatable' | 'grid'>('datatable');
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   const { showToast } = useToast();
 
-  const fetchItems = async () => {
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.user) {
+          setCurrentUser(data.user);
+        }
+      })
+      .catch((err) => console.error('Error fetching user:', err));
+  }, []);
+
+  const fetchItems = useCallback(async () => {
     try {
       setIsLoading(true);
       setIsError(false);
 
-      const params = new URLSearchParams();
-      if (search) params.set('search', search);
-      if (kategori && kategori !== 'all') params.set('kategori', kategori);
-      if (kondisi && kondisi !== 'all') params.set('kondisi', kondisi);
-      if (sort) params.set('sort', sort);
-
-      const res = await fetch(`/api/barang?${params.toString()}`);
+      const res = await fetch('/api/barang');
       const json = await res.json();
 
       if (json.success && Array.isArray(json.data)) {
         setItems(json.data);
-
-        // Derive unique categories from full list if not set
-        const categories = Array.from(new Set(json.data.map((i: Barang) => i.kategori))) as string[];
-        if (categories.length > 0) {
-          setKategoriList((prev) => Array.from(new Set([...prev, ...categories])));
-        }
       } else {
         setIsError(true);
       }
@@ -61,173 +57,132 @@ export default function BarangPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchItems();
-  }, [search, kategori, kondisi, sort]);
+  }, [fetchItems]);
 
-  const handleDeleteConfirm = async () => {
-    if (!deleteTarget) return;
-
-    try {
-      setIsDeleting(true);
-      const res = await fetch(`/api/barang/${deleteTarget.id}`, {
-        method: 'DELETE',
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        showToast(`Barang "${deleteTarget.nama}" berhasil dihapus`, 'success');
-        setDeleteTarget(null);
-        fetchItems();
-      } else {
-        showToast(data.message || 'Gagal menghapus barang', 'error');
-      }
-    } catch (err) {
-      showToast('Gagal menghubungi server', 'error');
-    } finally {
-      setIsDeleting(false);
-    }
-  };
+  const isScoped = currentUser?.role === 'KAKOM' || currentUser?.role === 'LABORAN';
+  const canAddBarang =
+    currentUser?.role === 'SUPER_ADMIN' ||
+    currentUser?.role === 'OPERATOR' ||
+    currentUser?.role === 'LABORAN';
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <header className="pb-3 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between gap-3">
+      {/* Header Section */}
+      <header className="pb-3 border-b border-neutral-200 dark:border-neutral-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-white">
-            Daftar Barang
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-white">
+              Data Barang & Unit Fisik
+            </h1>
+            {isScoped && currentUser?.jurusan_kode && (
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-sm bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800 flex items-center gap-1">
+                <Layers className="w-3 h-3" />
+                Wilayah Akses: {currentUser.jurusan_kode}
+              </span>
+            )}
+          </div>
           <p className="text-xs text-neutral-500 dark:text-neutral-400">
-            Kelola, cari, dan perbarui data stok inventaris.
+            Tabel DataTables inventaris unit aset fisik sekolah (format kode: BRG-[JURUSAN]-XXX-YYY) dengan fitur pencarian, sortir multi-kolom, pagination, dan QR Code.
           </p>
         </div>
 
-        <Link href="/barang/tambah">
-          <Button
-            variant="primary"
-            size="sm"
-            leftIcon={<Plus className="w-3.5 h-3.5" />}
-          >
-            Tambah Barang
-          </Button>
-        </Link>
-      </header>
+        <div className="flex items-center gap-2">
+          {/* View Mode Toggle */}
+          <div className="flex items-center border border-neutral-200 dark:border-neutral-800 rounded-sm p-0.5 bg-neutral-50 dark:bg-neutral-900 text-xs">
+            <button
+              onClick={() => setViewMode('datatable')}
+              className={`px-2.5 py-1 rounded-xs flex items-center gap-1 font-medium transition-colors cursor-pointer ${
+                viewMode === 'datatable'
+                  ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white shadow-xs'
+                  : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
+              }`}
+              title="DataTables View"
+            >
+              <TableIcon className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">DataTables</span>
+            </button>
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`px-2.5 py-1 rounded-xs flex items-center gap-1 font-medium transition-colors cursor-pointer ${
+                viewMode === 'grid'
+                  ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white shadow-xs'
+                  : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
+              }`}
+              title="Grid View"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Kartu</span>
+            </button>
+          </div>
 
-      {/* Search & Filters */}
-      <BarangSearch
-        search={search}
-        onSearchChange={setSearch}
-        kategori={kategori}
-        onKategoriChange={setKategori}
-        kondisi={kondisi}
-        onKondisiChange={setKondisi}
-        sort={sort}
-        onSortChange={setSort}
-        kategoriList={kategoriList}
-        totalResults={items.length}
-      />
-
-      {/* Error state */}
-      {isError && (
-        <div className="p-4 border border-red-200 dark:border-red-900/60 rounded-sm bg-red-50/50 dark:bg-red-950/20 text-center space-y-2">
-          <p className="text-xs text-red-600 dark:text-red-400 font-medium">
-            Gagal mengambil data barang dari server.
-          </p>
           <Button
             variant="outline"
             size="sm"
             onClick={fetchItems}
+            isLoading={isLoading}
             leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
           >
-            Coba Lagi
+            Refresh
           </Button>
+
+          <Button
+            id="btn-scan-qr-barang-page"
+            variant="outline"
+            size="sm"
+            onClick={() => setIsScannerOpen(true)}
+            leftIcon={<QrCode className="w-3.5 h-3.5 text-neutral-700 dark:text-neutral-300" />}
+          >
+            Scan QR
+          </Button>
+
+          {canAddBarang && (
+            <Link href="/barang/tambah">
+              <Button
+                variant="primary"
+                size="sm"
+                leftIcon={<Plus className="w-3.5 h-3.5" />}
+              >
+                Tambah Barang
+              </Button>
+            </Link>
+          )}
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      {viewMode === 'datatable' ? (
+        <BarangDataTable
+          currentUser={currentUser}
+          items={items}
+          isLoading={isLoading}
+          isError={isError}
+          onRefresh={fetchItems}
+          onDeleteSuccess={fetchItems}
+        />
+      ) : (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {items.map((item) => (
+              <BarangCard
+                key={item.id}
+                barang={item}
+                userRole={currentUser?.role}
+                userJurusan={currentUser?.jurusan_kode}
+              />
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Loading state */}
-      {isLoading && !isError && (
-        <Loading message="Memuat daftar barang..." className="py-12" />
-      )}
-
-      {/* Items List */}
-      {!isLoading && !isError && (
-        <>
-          {items.length === 0 ? (
-            <EmptyState
-              title={search || kategori !== 'all' || kondisi !== 'all' ? 'Barang tidak ditemukan' : 'Belum ada data barang'}
-              description={
-                search || kategori !== 'all' || kondisi !== 'all'
-                  ? 'Coba ganti kata kunci pencarian atau ubah filter.'
-                  : 'Tambahkan barang baru ke inventaris Anda sekarang.'
-              }
-              actionLabel={
-                search || kategori !== 'all' || kondisi !== 'all' ? 'Reset Pencarian' : '+ Tambah Barang'
-              }
-              onAction={
-                search || kategori !== 'all' || kondisi !== 'all'
-                  ? () => {
-                      setSearch('');
-                      setKategori('all');
-                      setKondisi('all');
-                    }
-                  : () => (window.location.href = '/barang/tambah')
-              }
-            />
-          ) : (
-            <div className="space-y-2.5">
-              {items.map((barang) => (
-                <BarangCard
-                  key={barang.id}
-                  barang={barang}
-                  onDelete={(target) => setDeleteTarget(target)}
-                />
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog
-        isOpen={Boolean(deleteTarget)}
-        onClose={() => setDeleteTarget(null)}
-        title="Hapus Barang?"
-        description="Apakah Anda yakin ingin menghapus data barang ini?"
-        variant="danger"
-        footer={
-          <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setDeleteTarget(null)}
-              disabled={isDeleting}
-            >
-              Batal
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={handleDeleteConfirm}
-              isLoading={isDeleting}
-            >
-              Hapus Barang
-            </Button>
-          </>
-        }
-      >
-        {deleteTarget && (
-          <div className="p-2.5 rounded-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-xs space-y-1">
-            <p className="font-semibold text-neutral-900 dark:text-white">
-              {deleteTarget.nama}
-            </p>
-            <p className="text-neutral-500 dark:text-neutral-400 font-mono">
-              {deleteTarget.kode} · {deleteTarget.kategori} · {deleteTarget.jumlah} unit
-            </p>
-          </div>
-        )}
-      </Dialog>
+      {/* QR Code Scanner Modal */}
+      <QrScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+      />
     </div>
   );
 }

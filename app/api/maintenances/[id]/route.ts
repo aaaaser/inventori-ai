@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  getAssetWithFullRelations,
-  updateAsset,
-  deleteAsset,
+  getAssetMaintenanceById,
+  updateAssetMaintenance,
+  deleteAssetMaintenance,
 } from '@/lib/school-inventory-service';
 import { getSessionUserFromRequest, checkRoutePermission } from '@/lib/auth-server';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(
   req: NextRequest,
@@ -13,24 +15,25 @@ export async function GET(
   try {
     const user = await getSessionUserFromRequest(req);
     const { id } = await params;
-
-    const data = await getAssetWithFullRelations(id, user || undefined);
-    if (!data) {
+    const numId = parseInt(id, 10);
+    if (isNaN(numId)) {
       return NextResponse.json(
-        { success: false, message: 'Aset tidak ditemukan atau berada di luar cakupan jurusan Anda.', error: 'NOT_FOUND' },
+        { success: false, message: 'ID perawatan tidak valid.', error: 'BAD_REQUEST' },
+        { status: 400 }
+      );
+    }
+
+    const item = await getAssetMaintenanceById(numId, user || undefined);
+    if (!item) {
+      return NextResponse.json(
+        { success: false, message: 'Data perawatan tidak ditemukan.', error: 'NOT_FOUND' },
         { status: 404 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      data: {
-        ...data.asset,
-        assetGroup: data.assetGroup,
-        maintenances: data.maintenances,
-        borrowingHistory: data.borrowingHistory,
-        histories: data.histories,
-      },
+      data: item,
     });
   } catch (error: any) {
     return NextResponse.json(
@@ -58,7 +61,7 @@ export async function PUT(
     const numId = parseInt(id, 10);
     const body = await req.json();
 
-    const result = await updateAsset(numId, body, user || undefined);
+    const result = await updateAssetMaintenance(numId, body, user || undefined);
     if (!result.success) {
       return NextResponse.json(
         { success: false, message: result.message, error: 'BAD_REQUEST' },
@@ -69,7 +72,7 @@ export async function PUT(
     return NextResponse.json({
       success: true,
       message: result.message,
-      data: result.asset,
+      data: result.maintenance,
     });
   } catch (error: any) {
     return NextResponse.json(
@@ -96,7 +99,7 @@ export async function DELETE(
     const { id } = await params;
     const numId = parseInt(id, 10);
 
-    const result = await deleteAsset(numId, user || undefined);
+    const result = await deleteAssetMaintenance(numId, user || undefined);
     if (!result.success) {
       return NextResponse.json(
         { success: false, message: result.message, error: 'BAD_REQUEST' },

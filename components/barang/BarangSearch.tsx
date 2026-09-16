@@ -8,57 +8,75 @@ import { Select } from '@/components/ui/Select';
 interface BarangSearchProps {
   search: string;
   onSearchChange: (val: string) => void;
-  kategori: string;
-  onKategoriChange: (val: string) => void;
   kondisi: string;
   onKondisiChange: (val: string) => void;
+  status?: string;
+  onStatusChange?: (val: string) => void;
+  jurusan?: string;
+  onJurusanChange?: (val: string) => void;
   sort: string;
   onSortChange: (val: string) => void;
-  kategoriList: string[];
   totalResults: number;
+  userJurusan?: string | null;
+  isScopedUser?: boolean;
 }
 
 export const BarangSearch: React.FC<BarangSearchProps> = ({
   search,
   onSearchChange,
-  kategori,
-  onKategoriChange,
   kondisi,
   onKondisiChange,
+  status = 'all',
+  onStatusChange,
+  jurusan = 'all',
+  onJurusanChange,
   sort,
   onSortChange,
-  kategoriList,
   totalResults,
+  userJurusan,
+  isScopedUser = false,
 }) => {
   const [showFilters, setShowFilters] = React.useState(false);
 
-  const kategoriOptions = [
-    { value: 'all', label: 'Semua Kategori' },
-    ...kategoriList.map((k) => ({ value: k, label: k })),
+  const jurusanOptions = [
+    { value: 'all', label: 'Semua Jurusan' },
+    { value: 'RPL', label: 'RPL (Rekayasa Perangkat Lunak)' },
+    { value: 'ATPH', label: 'ATPH (Agribisnis Tanaman Pangan & Hortikultura)' },
+    { value: 'TBSM', label: 'TBSM (Teknik & Bisnis Sepeda Motor)' },
   ];
 
   const kondisiOptions = [
     { value: 'all', label: 'Semua Kondisi' },
-    { value: 'Baru', label: 'Baru' },
     { value: 'Baik', label: 'Baik' },
     { value: 'Rusak Ringan', label: 'Rusak Ringan' },
     { value: 'Rusak Berat', label: 'Rusak Berat' },
   ];
 
-  const sortOptions = [
-    { value: 'terbaru', label: 'Paling Baru Ditambahkan' },
-    { value: 'nama_asc', label: 'Nama (A - Z)' },
-    { value: 'nama_desc', label: 'Nama (Z - A)' },
-    { value: 'jumlah_desc', label: 'Stok Terbanyak' },
-    { value: 'jumlah_asc', label: 'Stok Paling Sedikit' },
+  const statusOptions = [
+    { value: 'all', label: 'Semua Status' },
+    { value: 'TERSEDIA', label: 'Tersedia' },
+    { value: 'DIPINJAM', label: 'Dipinjam' },
+    { value: 'PERBAIKAN', label: 'Perbaikan / Maintenance' },
   ];
 
-  const hasActiveFilters = search || (kategori && kategori !== 'all') || (kondisi && kondisi !== 'all');
+  const sortOptions = [
+    { value: 'terbaru', label: 'Paling Baru Ditambahkan' },
+    { value: 'nama_asc', label: 'Nama Barang (A - Z)' },
+    { value: 'nama_desc', label: 'Nama Barang (Z - A)' },
+    { value: 'terlama', label: 'Paling Lama' },
+  ];
+
+  const hasActiveFilters =
+    search ||
+    (kondisi && kondisi !== 'all') ||
+    (status && status !== 'all') ||
+    (jurusan && jurusan !== 'all');
 
   const handleReset = () => {
     onSearchChange('');
-    onKategoriChange('all');
     onKondisiChange('all');
+    if (onStatusChange) onStatusChange('all');
+    if (onJurusanChange) onJurusanChange('all');
   };
 
   return (
@@ -69,7 +87,7 @@ export const BarangSearch: React.FC<BarangSearchProps> = ({
           <Input
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Cari nama, kode, atau kategori barang..."
+            placeholder="Cari kode unit (BRG-RPL-001-001), nama barang, ruangan, dsb..."
             leftIcon={<Search className="w-4 h-4 text-neutral-400" />}
             className="w-full text-xs h-9"
           />
@@ -98,16 +116,18 @@ export const BarangSearch: React.FC<BarangSearchProps> = ({
 
       {/* Expandable Filters */}
       {showFilters && (
-        <div className="p-3 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-sm grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-          <div>
-            <Select
-              label="Kategori"
-              value={kategori}
-              onChange={(e) => onKategoriChange(e.target.value)}
-              options={kategoriOptions}
-              className="text-xs h-8"
-            />
-          </div>
+        <div className="p-3 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-sm grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 text-xs">
+          {!isScopedUser && onJurusanChange && (
+            <div>
+              <Select
+                label="Jurusan"
+                value={jurusan}
+                onChange={(e) => onJurusanChange(e.target.value)}
+                options={jurusanOptions}
+                className="text-xs h-8"
+              />
+            </div>
+          )}
 
           <div>
             <Select
@@ -118,6 +138,18 @@ export const BarangSearch: React.FC<BarangSearchProps> = ({
               className="text-xs h-8"
             />
           </div>
+
+          {onStatusChange && (
+            <div>
+              <Select
+                label="Status Unit"
+                value={status}
+                onChange={(e) => onStatusChange(e.target.value)}
+                options={statusOptions}
+                className="text-xs h-8"
+              />
+            </div>
+          )}
 
           <div>
             <Select
@@ -130,7 +162,7 @@ export const BarangSearch: React.FC<BarangSearchProps> = ({
           </div>
 
           {hasActiveFilters && (
-            <div className="sm:col-span-3 flex justify-end">
+            <div className="sm:col-span-2 md:col-span-4 flex justify-end">
               <button
                 onClick={handleReset}
                 className="text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-white underline cursor-pointer"
@@ -145,9 +177,15 @@ export const BarangSearch: React.FC<BarangSearchProps> = ({
       {/* Result Count Status */}
       <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400 px-0.5">
         <span>
-          Menampilkan <strong className="text-neutral-900 dark:text-white">{totalResults}</strong> barang
+          Menampilkan <strong className="text-neutral-900 dark:text-white">{totalResults}</strong> unit aset terdaftar
         </span>
+        {isScopedUser && userJurusan && (
+          <span className="text-[11px] font-mono font-medium text-blue-600 dark:text-blue-400">
+            Wilayah Akses: {userJurusan}
+          </span>
+        )}
       </div>
     </div>
   );
 };
+

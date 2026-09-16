@@ -1,7 +1,30 @@
 import { UserRole, JurusanKode, Permission } from './rbac';
 
 export type KondisiBarang = 'Baik' | 'Rusak Ringan' | 'Rusak Berat' | 'Baru' | 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT';
-export type AssetStatus = 'TERSEDIA' | 'DIPINJAM' | 'PERBAIKAN' | 'RUSAK' | 'TIDAK_AKTIF';
+export type AssetStatus = 'TERSEDIA' | 'DIPINJAM' | 'PERAWATAN' | 'PERBAIKAN' | 'RUSAK' | 'TIDAK_AKTIF';
+export type MaintenanceStatus = 'DIJADWALKAN' | 'PROSES' | 'SELESAI' | 'DIBATALKAN';
+
+export interface AssetMaintenanceData {
+  id: number;
+  asset_id: number;
+  kode_barang?: string;
+  nama_barang?: string;
+  tanggal_perawatan: string;
+  jenis_perawatan: string; // Pembersihan, Perbaikan, Servis Berkala, Penggantian Komponen, Kalibrasi, Inspeksi
+  deskripsi: string;
+  pelaksana: string;
+  biaya: number;
+  kondisi_sebelum: 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT' | string;
+  kondisi_sesudah: 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT' | string;
+  status: MaintenanceStatus | string;
+  catatan?: string | null;
+  created_by?: number | null;
+  created_by_name?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type AssetTypeData = AssetGroupData;
 
 export type BorrowingStatus =
   | 'DRAFT'
@@ -38,17 +61,18 @@ export interface JurusanData {
   nama: string;
 }
 
-export interface CategoryData {
-  id: number;
-  name: string;
-  description?: string | null;
-}
-
 export interface RoomData {
   id: number;
   name: string;
+  kode_ruangan?: string | null;
+  nama_ruangan?: string | null;
   jurusan_id?: number | null;
   jurusan_kode?: string | null;
+  lokasi?: string | null;
+  is_active?: boolean;
+  keterangan?: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface AssetGroupData {
@@ -57,8 +81,6 @@ export interface AssetGroupData {
   nama_barang: string;
   jurusan_id: number;
   jurusan_kode?: string;
-  kategori_id?: number | null;
-  kategori_nama?: string;
   merk?: string | null;
   tipe?: string | null;
   satuan?: string;
@@ -76,6 +98,7 @@ export interface AssetData {
   nomor_unit: number;
   nama_barang?: string;
   kategori?: string;
+  jurusan_id?: number;
   jurusan_kode?: string;
   jurusan_nama?: string;
   merk?: string | null;
@@ -181,13 +204,25 @@ export type SchoolAsset = AssetData;
 export interface Barang {
   id: number;
   kode: string;
+  kode_unit?: string;
+  kode_kelompok?: string;
   nama: string;
-  kategori: string;
+  kategori?: string;
   jumlah: number;
   kondisi: 'Baik' | 'Rusak Ringan' | 'Rusak Berat' | 'Baru' | string;
   status?: string;
   jurusan?: string;
+  jurusan_nama?: string;
   ruangan?: string;
+  ruangan_id?: number | null;
+  merk?: string;
+  tipe?: string;
+  nomor_seri?: string;
+  nomor_unit?: number;
+  tahun_perolehan?: number;
+  sumber_dana?: string;
+  harga_perolehan?: number;
+  keterangan?: string;
   created_at: string | Date;
   updated_at: string | Date;
 }
@@ -195,11 +230,13 @@ export interface Barang {
 export interface BarangFormData {
   kode?: string;
   nama: string;
-  kategori: string;
+  kategori?: string;
   jumlah: number;
   kondisi: string;
   jurusan?: string;
+  jurusan_id?: number;
   ruangan?: string;
+  ruangan_id?: number;
   merk?: string;
   tipe?: string;
   nomor_seri?: string;
@@ -223,16 +260,18 @@ export interface StatsData {
   menungguPersetujuan?: number;
   pengajuanDisetujui?: number;
   pengajuanDitolak?: number;
-  totalKategori: number;
+  totalKategori?: number;
+  totalRuangan?: number;
   totalNilaiAset?: number;
   stokKritis: Array<{
     id: number;
     kode: string;
     nama: string;
-    kategori: string;
+    kategori?: string;
     jumlah: number;
   }>;
-  kategoriCount: Record<string, number>;
+  kategoriCount?: Record<string, number>;
+  ruanganCount?: Record<string, number>;
   kondisiCount: {
     Baik: number;
     RusakRingan: number;

@@ -1,26 +1,29 @@
 # Sistem Inventori dan Peminjaman Aset Sekolah
 
-Aplikasi web modern berbasis **Next.js 15 App Router**, **TypeScript**, **Tailwind CSS**, dan **Drizzle ORM (Neon PostgreSQL)** untuk tata kelola inventaris, penomoran unit fisik aset, manajemen pengguna dengan Role-Based Access Control (RBAC 6 role), serta alur persetujuan peminjaman bertingkat pada lingkungan sekolah menengah kejuruan (SMK) dengan 3 jurusan: **RPL**, **ATPH**, dan **TBSM**.
+Aplikasi web modern berbasis **Next.js 15 App Router**, **TypeScript**, **Tailwind CSS**, dan **Drizzle ORM (Neon PostgreSQL)** untuk tata kelola inventaris, penomoran unit fisik aset, sistem QR code, riwayat pemeliharaan/perawatan (*maintenance*), manajemen pengguna dengan Role-Based Access Control (RBAC 6 role), serta alur persetujuan peminjaman bertingkat pada lingkungan sekolah menengah kejuruan (SMK) dengan 3 jurusan: **RPL**, **ATPH**, dan **TBSM**.
 
 ---
 
 ## Daftar Isi
 1. [Tentang Aplikasi](#tentang-aplikasi)
-2. [Fitur Utama](#fitur-utama)
-3. [Tech Stack](#tech-stack)
-4. [Prasyarat Sistem](#prasyarat-sistem)
-5. [Panduan Instalasi Lokal](#panduan-instalasi-lokal)
-6. [Konfigurasi Environment](#konfigurasi-environment)
-7. [Inisialisasi & Migrasi Database](#inisialisasi--migrasi-database)
-8. [Daftar Akun Pengguna Default (Seed User)](#daftar-akun-pengguna-default-seed-user)
-9. [Matriks Hak Akses & Role (RBAC)](#matriks-hak-akses--role-rbac)
-10. [Aturan Pembatasan Data Berdasarkan Jurusan (Data Access Scope)](#aturan-pembatasan-data-berdasarkan-jurusan-data-access-scope)
-11. [Alur & Siklus Hidup Peminjaman Aset](#alur--siklus-hidup-peminjaman-aset)
-12. [Format Penomoran Kode Aset & Unit](#format-penomoran-kode-aset--unit)
-13. [Struktur Database & Skema Relasional](#struktur-database--skema-relasional)
-14. [Dokumentasi REST API](#dokumentasi-rest-api)
-15. [Panduan Skenario Pengujian (Testing)](#panduan-skenario-pengujian-testing)
-16. [Catatan Keamanan Produksi](#catatan-keamanan-produksi)
+2. [Hierarki Kode Barang & Hubungan Data](#hierarki-kode-barang--hubungan-data)
+3. [Aturan Pembuatan & Integritas Kode Unit](#aturan-pembuatan--integritas-kode-unit)
+4. [Sistem QR Code & Cetak Label Aset](#sistem-qr-code--cetak-label-aset)
+5. [Sistem Manajemen Perawatan & Pemeliharaan (Maintenance)](#sistem-manajemen-perawatan--pemeliharaan-maintenance)
+6. [Fitur Utama](#fitur-utama)
+7. [Tech Stack](#tech-stack)
+8. [Prasyarat Sistem](#prasyarat-sistem)
+9. [Panduan Instalasi Lokal](#panduan-instalasi-lokal)
+10. [Konfigurasi Environment](#konfigurasi-environment)
+11. [Inisialisasi & Migrasi Database](#inisialisasi--migrasi-database)
+12. [Daftar Akun Pengguna Default (Seed User)](#daftar-akun-pengguna-default-seed-user)
+13. [Matriks Hak Akses & Role (RBAC)](#matriks-hak-akses--role-rbac)
+14. [Aturan Pembatasan Data Berdasarkan Jurusan (Data Access Scope)](#aturan-pembatasan-data-berdasarkan-jurusan-data-access-scope)
+15. [Alur & Siklus Hidup Peminjaman Aset](#alur--siklus-hidup-peminjaman-aset)
+16. [Struktur Database & Skema Relasional](#struktur-database--skema-relasional)
+17. [Dokumentasi REST API Lengkap](#dokumentasi-rest-api-lengkap)
+18. [Panduan Skenario Pengujian (Testing)](#panduan-skenario-pengujian-testing)
+19. [Catatan Keamanan Produksi](#catatan-keamanan-produksi)
 
 ---
 
@@ -32,10 +35,150 @@ Aplikasi ini dirancang untuk menjawab kebutuhan digitalisasi sarana dan prasaran
   - **ATPH**: Agribisnis Tanaman Pangan dan Hortikultura (Greenhouse, Traktor, Sensor Tanah, Sprayer)
   - **TBSM**: Teknik dan Bisnis Sepeda Motor (Bengkel Otomotif, Engine Stand, Toolset, Scanner EFI)
 * **Persetujuan Bertingkat (Multi-Stage Approval)**: Memastikan peminjaman aset tercatat secara resmi dari tingkat laboratorium hingga otorisasi pimpinan sekolah.
+* **Integrasi QR Code & Perawatan Unit**: Menghubungkan setiap unit barang dengan QR code individual dan rekam jejak pemeliharaan berkala.
 
 ---
 
-## 2. Fitur Utama
+## 2. Hierarki Kode Barang & Hubungan Data
+
+Sistem menerapkan pemisahan yang tegas antara **Kelompok/Jenis Barang** dan **Unit Fisik Barang**:
+
+```text
+[Jenis Barang] (Asset Group)
+     │   BRG-RPL-001 = Komputer Server
+     │
+     ▼
+[Unit Fisik Barang] (Assets)
+     ├── BRG-RPL-001-001 = Server Unit 1 ──► [QR Code] ──► [Detail Aset] ──► [Riwayat Perawatan]
+     ├── BRG-RPL-001-002 = Server Unit 2 ──► [QR Code] ──► [Detail Aset] ──► [Riwayat Perawatan]
+     └── BRG-RPL-001-003 = Server Unit 3 ──► [QR Code] ──► [Detail Aset] ──► [Riwayat Perawatan]
+```
+
+### Contoh Kelompok & Unit Berdasarkan Jurusan:
+
+#### Jurusan RPL (Rekayasa Perangkat Lunak)
+* `BRG-RPL-001`: Komputer Server
+  * `BRG-RPL-001-001`
+  * `BRG-RPL-001-002`
+* `BRG-RPL-002`: Switch Hub 24 Port
+  * `BRG-RPL-002-001`
+  * `BRG-RPL-002-002`
+* `BRG-RPL-003`: Router Mikrotik
+  * `BRG-RPL-003-001`
+  * `BRG-RPL-003-002`
+
+#### Jurusan ATPH (Agribisnis Tanaman Pangan & Hortikultura)
+* `BRG-ATPH-001`: Traktor Tangan
+  * `BRG-ATPH-001-001`
+  * `BRG-ATPH-001-002`
+* `BRG-ATPH-002`: Sprayer Elektrik
+  * `BRG-ATPH-002-001`
+  * `BRG-ATPH-002-002`
+* `BRG-ATPH-003`: pH Meter Tanah
+  * `BRG-ATPH-003-001`
+  * `BRG-ATPH-003-002`
+
+#### Jurusan TBSM (Teknik & Bisnis Sepeda Motor)
+* `BRG-TBSM-001`: Toolset Mekanik
+  * `BRG-TBSM-001-001`
+  * `BRG-TBSM-001-002`
+* `BRG-TBSM-002`: Kompresor Udara
+  * `BRG-TBSM-002-001`
+  * `BRG-TBSM-002-002`
+* `BRG-TBSM-003`: Engine Stand Motor
+  * `BRG-TBSM-003-001`
+  * `BRG-TBSM-003-002`
+
+---
+
+## 3. Aturan Pembuatan & Integritas Kode Unit
+
+Sistem memberlakukan aturan validasi dan generator kode otomatis pada backend service (`lib/school-inventory-service.ts`):
+
+1. **Format Wajib**: Kode unit **harus selalu** berasal dari: `kode jenis barang` + `nomor unit` (misal: `BRG-RPL-001-001`).
+2. **Larangan Pola Manual**: Sistem **tidak boleh dan tidak akan** membuat kode berdasarkan nama barang, merk, nomor seri acak, atau nama ruangan.
+3. **Keunikan Global (*Unique Constraint*)**: Setiap nomor unit bersifat unik di seluruh database.
+4. **Prinsip Non-Reusability**: Jika suatu unit barang dihapus (*soft-delete* / tercatat di riwayat mutasi / audit log), nomor unit tersebut **tidak akan digunakan ulang** untuk unit baru demi menjaga integritas data riwayat.
+5. **Perubahan Status Real-Time**: Status unit fisik diperbarui secara otomatis berdasarkan aktivitas:
+   - Pengajuan peminjaman diserahkan ➔ status menjadi `DIPINJAM`.
+   - Pemeliharaan dimulai ➔ status menjadi `PERAWATAN` / `PERBAIKAN`.
+   - Pemeliharaan atau pengembalian selesai ➔ status pulih menjadi `TERSEDIA`.
+
+---
+
+## 4. Sistem QR Code, Scanner Kamera & Cetak Label Aset
+
+Setiap unit barang memiliki QR code mandiri yang siap dicetak untuk pelabelan fisik serta dipindai menggunakan scanner kamera bawaan perangkat:
+
+### 1. Fitur Scanner QR Code Kamera (Dashboard & Data Barang)
+* **Akses Cepat**: Tombol `[ 📷 Scan QR Barang ]` tersedia di halaman awal/dashboard dan halaman Data Barang.
+* **Kompatibilitas Perangkat**:
+  - **Smartphone / Tablet**: Otomatis memprioritaskan kamera belakang (`facingMode: "environment"`) dan mendukung toggle flash/torch jika didukung perangkat.
+  - **Laptop / Desktop**: Menggunakan webcam perangkat.
+  - **Fallback Input Manual**: Jika perangkat tidak memiliki kamera atau izin browser tidak diaktifkan, pengguna dapat beralih ke tab input kode manual tanpa keluar dari modal.
+* **Mekanisme Anti-Duplicate / Locking**:
+  - Ketika QR Code terbaca, stream kamera langsung dijeda/dihentikan dan flag penguncian (*debounce lock*) aktif untuk mencegah pembacaan ganda atau navigasi berulang.
+  - Sistem menampilkan umpan balik visual (*loading feedback*): `"QR Code berhasil dibaca. Membuka detail barang..."` kemudian mengarahkan ke halaman detail unit.
+* **Penanganan Error & Validasi**:
+  - **QR Tidak Terdaftar**: Menampilkan pesan `"Barang tidak ditemukan. QR Code tidak terdaftar pada sistem"` dan tombol `"Scan Ulang"`.
+  - **Akses Antar Jurusan (RBAC)**: Jika pengguna login dengan role terbatas (misal Laboran RPL) memindai QR aset jurusan lain (misal ATPH), backend secara otomatis menolak dengan status HTTP 403 Forbidden dan notifikasi yang jelas.
+
+---
+
+### 2. Panduan Menjalankan Scanner di Local Development (Kamera & Browser Permissions)
+
+Akses kamera peramban web diatur secara ketat oleh standar keamanan W3C (*Secure Context / MediaDevices API*):
+
+1. **Pengembangan di Localhost**:
+   - Browser modern (Google Chrome, Firefox, Microsoft Edge, Safari) mengizinkan akses kamera langsung pada origin `http://localhost:3000` atau `http://127.0.0.1:3000` tanpa memerlukan sertifikat SSL/HTTPS.
+2. **Pengujian pada Jaringan Lokal (IP LAN / Wi-Fi Smartphone)**:
+   - Jika Anda membuka aplikasi dari smartphone menggunakan IP komputer (contoh: `http://192.168.1.15:3000`), browser **akan memblokir akses kamera** karena dianggap sebagai koneksi tidak aman (*insecure context*).
+   - **Solusi untuk testing di smartphone melalui LAN**:
+     - Gunakan tunneling HTTPS seperti `ngrok` (`ngrok http 3000`) atau Cloudflare Tunnel.
+     - Atau gunakan fitur flag Chrome di smartphone: Buka `chrome://flags/#unsafely-treat-insecure-origin-as-secure`, tambahkan `http://192.168.1.15:3000`, lalu aktifkan (*Enable*).
+3. **Pengaturan Izin Kamera di Browser**:
+   - Jika muncul pesan `"Kamera tidak dapat digunakan. Silakan izinkan akses kamera pada browser kemudian coba kembali"`, klik ikon gembok / perizinan situs pada address bar browser, lalu ubah status **Kamera** menjadi **Izinkan (Allow)**.
+
+---
+
+### 3. Target URL QR Code & Cetak Label
+1. **Target Format QR Code**: QR Code merujuk ke kode unit spesifik atau URL detail unit:
+   ```text
+   BRG-RPL-001-001  atau  https://domain-sekolah.sch.id/barang/1
+   ```
+2. **Keamanan QR Code (Security Enforcement)**:
+   - Pemindaian QR Code menampilkan data publik yang aman (nama barang, kode unit, jurusan, ruangan, kondisi fisik, dan status ketersediaan).
+   - QR Code **bukan mekanisme bypass otorisasi**.
+   - Aksi pengeditan aset, pembuatan pemeliharaan, atau persetujuan peminjaman tetap wajib melalui otentikasi login dengan role yang sesuai.
+3. **Endpoint API**:
+   - `POST /api/assets/scan` - Validasi payload QR dan otorisasi akses jurusan.
+   - `GET /api/qr-code?url=...&format=svg` (vektor tajam untuk cetak)
+   - `GET /api/qr-code?url=...&format=png` (gambar raster)
+4. **Fitur Print QR Code**: Halaman detail aset (`/barang/[id]`) menyediakan tombol **Cetak QR Code** dengan template label siap tempel yang memuat logo sekolah, nama barang, kode unit, dan petunjuk scan.
+
+---
+
+## 5. Sistem Manajemen Perawatan & Pemeliharaan (Maintenance)
+
+Modul perawatan aset (`/api/maintenances`) mencatat seluruh riwayat pemeliharaan preventif maupun perbaikan kuratif per unit aset:
+
+* **Field Data Perawatan**:
+  - `id`: ID unik rekam perawatan
+  - `asset_id`: Referensi unit barang terkait
+  - `tanggal_perawatan`: Tanggal pelaksanaan
+  - `jenis_perawatan`: `RUTIN`, `PERBAIKAN`, `PENGGANTIAN_SPAREPART`, `KALIBRASI`
+  - `deskripsi`: Catatan detail tindakan perbaikan
+  - `biaya`: Estimasi / realisasi biaya perbaikan (Rp)
+  - `pelaksana`: Nama teknisi internal atau vendor eksternal
+  - `status`: `DIJADWALKAN`, `PROSES`, `SELESAI`, `DIBATALKAN`
+  - `catatan_kondisi`: Evaluasi kondisi unit setelah tindakan (`BAIK`, `RUSAK_RINGAN`, dll.)
+* **Otomatisasi Status Unit**:
+  - Saat rekam perawatan baru dengan status `PROSES` dibuat, unit aset otomatis diset ke status `PERAWATAN`.
+  - Saat status perawatan diperbarui menjadi `SELESAI`, status unit otomatis kembali ke `TERSEDIA` dan kondisi fisiknya diperbarui sesuai `catatan_kondisi`.
+
+---
+
+## 6. Fitur Utama
 * **Dashboard Analitik**: Monitoring total unit, stok siap pakai, unit sedang dipinjam, pengajuan menunggu review, dan breakdown per jurusan.
 * **Katalog Aset & Unit**: Pencarian instan, filter kategori, filter kondisi fisik (`BAIK`, `RUSAK_RINGAN`, `RUSAK_BERAT`), dan filter jurusan.
 * **Manajemen Peminjaman**: Pengajuan unit barang, verifikasi ketersediaan, serta pencatatan tanggal peminjaman & rencana pengembalian.
@@ -46,7 +189,7 @@ Aplikasi ini dirancang untuk menjawab kebutuhan digitalisasi sarana dan prasaran
 
 ---
 
-## 3. Tech Stack
+## 7. Tech Stack
 | Lapisan | Teknologi |
 |---|---|
 | **Frontend & Backend** | Next.js 15 (App Router, Server Components & Route Handlers) |
@@ -54,18 +197,19 @@ Aplikasi ini dirancang untuk menjawab kebutuhan digitalisasi sarana dan prasaran
 | **Styling** | Tailwind CSS v4, Lucide React Icons |
 | **Database ORM** | Drizzle ORM + Drizzle Kit |
 | **Database Engine** | Neon Serverless PostgreSQL (dengan fallback in-memory dev store) |
+| **QR Engine** | `qrcode` Server-side renderer |
 | **Keamanan & Kriptografi** | `bcryptjs` untuk password hashing, HTTP-Only Cookie Session |
 
 ---
 
-## 4. Prasyarat Sistem
+## 8. Prasyarat Sistem
 * **Node.js**: Versi `18.18.0` atau yang lebih baru (disarankan Node.js 20 LTS)
 * **Package Manager**: `npm` (atau `yarn` / `pnpm`)
 * **Database**: Akun PostgreSQL atau [Neon Serverless Postgres](https://neon.tech) (opsional saat local dev karena sudah memiliki internal memory store)
 
 ---
 
-## 5. Panduan Instalasi Lokal
+## 9. Panduan Instalasi Lokal
 
 1. **Clone repository atau ekstrak file project:**
    ```bash
@@ -93,7 +237,7 @@ Aplikasi ini dirancang untuk menjawab kebutuhan digitalisasi sarana dan prasaran
 
 ---
 
-## 6. Konfigurasi Environment
+## 10. Konfigurasi Environment
 
 Edit file `.env` di direktori utama:
 
@@ -115,7 +259,7 @@ NEXT_PUBLIC_APP_NAME="Sistem Inventori dan Peminjaman Aset Sekolah"
 
 ---
 
-## 7. Inisialisasi & Migrasi Database
+## 11. Inisialisasi & Migrasi Database
 
 Untuk menerapkan skema database ke Neon PostgreSQL:
 
@@ -129,7 +273,7 @@ npx drizzle-kit studio
 
 ---
 
-## 8. Daftar Akun Pengguna Default (Seed User)
+## 12. Daftar Akun Pengguna Default (Seed User)
 
 Sistem menyediakan 10 akun bawaan untuk pengujian alur bisnis dan verifikasi hak akses seluruh role:
 
@@ -150,13 +294,14 @@ Sistem menyediakan 10 akun bawaan untuk pengujian alur bisnis dan verifikasi hak
 
 ---
 
-## 9. Matriks Hak Akses & Role (RBAC)
+## 13. Matriks Hak Akses & Role (RBAC)
 
 | Hak Akses / Kemampuan | `SUPER_ADMIN` | `OPERATOR` | `KEPALA_SEKOLAH` | `WAKA_SARPRAS` | `KAKOM` | `LABORAN` |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Melihat Dashboard & Statistik** |  |  |  |  |  (Khusus Jurusan) |  (Khusus Jurusan) |
 | **Melihat Katalog Aset & Stok** |  |  |  |  |  (Khusus Jurusan) |  (Khusus Jurusan) |
 | **Tambah & Edit Aset / Unit** |  |  | ❌ | ❌ | ❌ |  (Khusus Jurusannya) |
+| **Kelola Perawatan / Maintenance** |  |  | ❌ | ❌ | ❌ |  (Khusus Jurusan) |
 | **Hapus Data Aset** |  | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Ajukan Peminjaman Barang** |  |  | ❌ | ❌ | ❌ |  (Khusus Jurusan) |
 | **Approval Tahap 1 (Kakom)** |  | ❌ | ❌ | ❌ |  (Jurusannya) | ❌ |
@@ -169,7 +314,7 @@ Sistem menyediakan 10 akun bawaan untuk pengujian alur bisnis dan verifikasi hak
 
 ---
 
-## 10. Aturan Pembatasan Data Berdasarkan Jurusan (Data Access Scope)
+## 14. Aturan Pembatasan Data Berdasarkan Jurusan (Data Access Scope)
 
 Sistem menerapkan prinsip **Isolasi Data Berdasarkan Jurusan** di level server-side, API, dan query database:
 
@@ -198,7 +343,7 @@ Sistem menerapkan prinsip **Isolasi Data Berdasarkan Jurusan** di level server-s
 
 ---
 
-## 11. Alur & Siklus Hidup Peminjaman Aset
+## 15. Alur & Siklus Hidup Peminjaman Aset
 
 Proses peminjaman aset sekolah diatur melalui **4 Tahap Otorisasi Resmi**:
 
@@ -229,26 +374,14 @@ Proses peminjaman aset sekolah diatur melalui **4 Tahap Otorisasi Resmi**:
 
 ---
 
-## 11. Format Penomoran Kode Aset & Unit
-
-Sistem menerapkan penomoran terstruktur hierarkis:
-1. **Kode Induk Kelompok Aset**: `BRG-{KODE_JURUSAN}-{URUT_BARANG}`
-   - Contoh: `BRG-RPL-001` (Laptop ASUS ROG)
-2. **Kode Unit Fisik Satuan**: `BRG-{KODE_JURUSAN}-{URUT_BARANG}-{URUT_UNIT}`
-   - Contoh: `BRG-RPL-001-001`, `BRG-RPL-001-002`, `BRG-RPL-001-003`
-3. **Nomor Peminjaman**: `PINJAM-{TAHUN}{BULAN}{HARI}-{URUT}`
-   - Contoh: `PINJAM-20260301-001`
-
----
-
-## 12. Struktur Database & Skema Relasional
+## 16. Struktur Database & Skema Relasional
 
 1. **`jurusan`**: Master data jurusan (`RPL`, `ATPH`, `TBSM`).
-2. **`categories`**: Master kategori aset (Komputer, Mesin, Elektronik, Laboratorium, Pertanian, Alat Berat).
-3. **`rooms`**: Master ruangan penempatan aset (Lab RPL 1, Greenhouse, Bengkel Otomotif).
-4. **`users`**: Data otentikasi, role, hashed password (`bcryptjs`), status aktif, dan jurusan.
-5. **`asset_groups`**: Kelompok barang (nama barang, merk, tipe, spesifikasi).
-6. **`assets`**: Unit fisik individual (kode unit, nomor seri, kondisi, status ketersediaan).
+2. **`rooms`**: Master data ruangan dinamis penempatan aset (Lab RPL 1, Lab RPL 2, Server Room, Greenhouse 1, Bengkel Mesin, Ruang Teori, dll.) dengan relasi ke `jurusan_id`.
+3. **`users`**: Data otentikasi, role, hashed password (`bcryptjs`), status aktif, dan jurusan.
+4. **`asset_groups`**: Kelompok / jenis barang (kode kelompok `BRG-[JURUSAN]-XXX`, nama barang, merk, tipe, spesifikasi).
+5. **`assets`**: Unit fisik individual (kode unit `BRG-[JURUSAN]-XXX-YYY`, nomor seri, kondisi, status ketersediaan, relasi ke `ruangan_id`, `asset_group_id`, dan `jurusan_id`).
+6. **`asset_maintenances`**: Riwayat perawatan, perbaikan, teknisi, biaya, dan hasil kondisi fisik.
 7. **`borrowings`**: Header transaksi peminjaman (nomor peminjaman, peminjam, jadwal, status workflow).
 8. **`borrowing_items`**: Relasi unit aset yang dipinjam dalam satu nomor pengajuan.
 9. **`approvals`**: Rekam jejak approval per tahap (user, role, status, catatan persetujuan).
@@ -258,19 +391,38 @@ Sistem menerapkan penomoran terstruktur hierarkis:
 
 ---
 
-## 13. Dokumentasi REST API
+## 17. Dokumentasi REST API Lengkap
 
 ### Autentikasi
 * `POST /api/auth/login` - Login pengguna (menerima `identifier` dan `password`).
 * `POST /api/auth/logout` - Logout dan penghapusan sesi cookie.
 * `GET /api/auth/me` - Mendapatkan informasi profil pengguna aktif.
 
-### Manajemen Aset
-* `GET /api/assets` - Daftar unit aset (query params: `jurusan`, `kategori`, `kondisi`, `status`, `search`).
-* `POST /api/assets` - Tambah barang beserta generate unit fisik satuan.
-* `GET /api/assets/:id` - Detail aset beserta riwayat mutasi.
-* `PUT /api/assets/:id` - Memperbarui data aset & kondisi fisik.
-* `DELETE /api/assets/:id` - Menghapus unit aset (Hanya Super Admin).
+### Manajemen Kelompok Aset (Asset Groups)
+* `GET /api/asset-groups` - Daftar kelompok barang dan unit di dalamnya (query: `jurusan`, `search`, `nextCodeFor`).
+* `POST /api/asset-groups` - Tambah kelompok jenis barang baru beserta unit pertamanya.
+
+### Manajemen Unit Aset & QR
+* `GET /api/assets` - Daftar unit aset (query params: `jurusan`, `ruangan_id`, `kondisi`, `status`, `search`).
+* `POST /api/assets` - Tambah barang beserta batch generate unit fisik satuan.
+* `GET /api/assets/:id` - Detail unit aset lengkap beserta riwayat pemeliharaan, riwayat peminjaman, dan log mutasi.
+* `PUT /api/assets/:id` - Memperbarui data spesifikasi aset & kondisi fisik.
+* `DELETE /api/assets/:id` - Menghapus unit aset (Hanya Super Admin & Laboran sesuai hak jurusan).
+* `GET /api/qr-code` - Generate kode QR dinamis (query: `url`, `format=svg|png`, `width`).
+
+### Manajemen Ruangan Dinamis (Rooms Master)
+* `GET /api/rooms` - Daftar semua ruangan (filter query: `jurusan_id`, `active_only`, `search`).
+* `POST /api/rooms` - Tambah ruangan baru (Role: Super Admin / Operator / Laboran).
+* `GET /api/rooms/:id` - Detail data ruangan beserta aset yang ditempatkan di dalamnya.
+* `PUT /api/rooms/:id` - Update nama, kode, lokasi, dan status ruangan.
+* `DELETE /api/rooms/:id` - Hapus ruangan (dengan proteksi integritas: ruangan yang masih memiliki aset aktif tidak dapat dihapus).
+
+### Riwayat Perawatan (Maintenance)
+* `GET /api/maintenances` - Daftar log perawatan aset (filter: `assetId`, `jurusan`).
+* `POST /api/maintenances` - Buat rekam perawatan/perbaikan baru (otomatis sinkron status unit).
+* `GET /api/maintenances/:id` - Detail data perawatan.
+* `PUT /api/maintenances/:id` - Perbarui status perawatan & kondisi akhir aset.
+* `DELETE /api/maintenances/:id` - Hapus data perawatan.
 
 ### Peminjaman & Workflow Approval
 * `GET /api/borrowings` - Daftar pengajuan peminjaman (filter: `status`, `jurusan`).
@@ -289,34 +441,35 @@ Sistem menerapkan penomoran terstruktur hierarkis:
 
 ### Master Data & Audit
 * `GET /api/jurusan` - Daftar jurusan sekolah.
-* `GET /api/rooms` - Daftar ruangan sekolah.
-* `GET /api/categories` - Daftar kategori inventaris.
+* `GET /api/rooms` - Daftar ruangan sekolah dinamis.
 * `GET /api/audit-logs` - Log jejak audit transaksi sistem.
-* `GET /api/stats` - Statistik ringkasan inventaris untuk dashboard.
+* `GET /api/stats` - Statistik agregat unit aset & status peminjaman untuk dashboard.
 
 ---
 
-## 14. Panduan Skenario Pengujian (Testing)
+## 18. Panduan Skenario Pengujian (Testing)
 
-### Skenario 1: Verifikasi Enforce Permission Backend (Security Check)
-* **Uji**: Login sebagai `laboran.rpl` lalu lakukan request manual `POST /api/borrowings/1/approve`.
-* **Hasil Diharapkan**: Response **`403 Forbidden`** dengan pesan penolakan wewenang: *"Role LABORAN tidak memiliki kewenangan approval."*
+### Skenario 1: Verifikasi Generator Kode Unit & Non-Reusability
+1. Buka form **Tambah Barang** -> Pilih Jurusan `RPL`, Nama: `Komputer Server`, Jumlah: `3`.
+2. Sistem secara otomatis membuat unit `BRG-RPL-001-001`, `BRG-RPL-001-002`, `BRG-RPL-001-003`.
+3. Hapus salah satu unit, lalu daftarkan unit tambahan berikutnya.
+4. Sistem tidak akan menggunakan ulang nomor yang pernah ada, melainkan melanjutkan ke nomor unit berikutnya (`BRG-RPL-001-004`).
 
-### Skenario 2: Isolasi Kewenangan Jurusan (Kakom Check)
-* **Uji**: Login sebagai `kakom.atph` lalu coba menyetujui pengajuan peminjaman milik aset jurusan `RPL`.
-* **Hasil Diharapkan**: Response **`403 Forbidden`** dengan pesan penolakan: *"Kakom hanya berhak menyetujui pengajuan pada jurusannya sendiri (ATPH)."*
+### Skenario 2: Verifikasi Alur Perawatan (Maintenance Workflow)
+1. Buka halaman detail unit `BRG-RPL-001-001` (`/barang/1`).
+2. Klik tombol **Catat Perawatan / Perbaikan**.
+3. Isi jenis perawatan `PERBAIKAN`, status `PROSES`. Simpan.
+4. Unit aset otomatis berubah status menjadi `PERAWATAN`.
+5. Klik **Selesaikan Perbaikan** -> status unit otomatis pulih menjadi `TERSEDIA`.
 
-### Skenario 3: Alur Penuh Peminjaman hingga Selesai
-1. Login sebagai `laboran.rpl` -> Buka menu **Peminjaman** -> Klik **Ajukan Peminjaman** -> Pilih unit laptop RPL -> Submit.
-2. Login sebagai `kakom.rpl` -> Buka menu **Peminjaman** -> Klik **Setujui (KAKOM)**.
-3. Login sebagai `sarpras` -> Buka menu **Peminjaman** -> Klik **Setujui (WAKA_SARPRAS)**.
-4. Login sebagai `kepsek` -> Buka menu **Peminjaman** -> Klik **Setujui (KEPALA_SEKOLAH)** (Status menjadi `DISETUJUI`).
-5. Login sebagai `laboran.rpl` atau `operator` -> Klik **Serah Terima Barang** (Status menjadi `DIPINJAM`, aset terkunci).
-6. Saat masa pinjam selesai, klik **Konfirmasi Pengembalian** (Status menjadi `DIKEMBALIKAN`, aset kembali `TERSEDIA`).
+### Skenario 3: Verifikasi QR Code & Keamanan
+1. Buka halaman detail unit `BRG-RPL-001-001`.
+2. Klik **Cetak QR Code** -> Jendela cetak browser akan terbuka dengan template label aset yang siap dipotong dan ditempel pada perangkat fisik.
+3. Akses URL QR Code `/inventori/barang/detail/1` tanpa login. Sistem hanya menampilkan ringkasan publik tanpa mengizinkan manipulasi data.
 
 ---
 
-## 15. Catatan Keamanan Produksi
+## 19. Catatan Keamanan Produksi
 1. Seluruh password di hash menggunakan algoritma **bcryptjs dengan salt rounds 10**.
 2. Cookie sesi menggunakan flag **HttpOnly**, **SameSite=Lax**, dan **Secure** saat di lingkungan HTTPS.
 3. Selalu perbarui `SESSION_SECRET` dengan string acak panjang sebelum aplikasi di publikasikan ke server produksi.

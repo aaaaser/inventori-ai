@@ -17,29 +17,97 @@ export interface ServiceResult<T> {
   errors?: Record<string, string>;
 }
 
+export interface GetAllBarangOptions {
+  kategori?: string;
+  kondisi?: string;
+  status?: string;
+  search?: string;
+  sort?: string;
+  sort_by?: string;
+  sort_dir?: 'asc' | 'desc' | string;
+  jurusan?: string;
+  ruangan_id?: number;
+  page?: number;
+  per_page?: number;
+}
+
+export interface PaginatedBarangResult {
+  data: Barang[];
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
+}
+
 export async function getAllBarang(
-  filters?: {
-    kategori?: string;
-    kondisi?: string;
-    search?: string;
-    sort?: string;
-    jurusan?: string;
-  },
+  filters?: GetAllBarangOptions,
   actor?: UserSession | null
 ): Promise<Barang[]> {
   const assets = await getAllAssets(
     {
       kategoriName: filters?.kategori,
       kondisi: filters?.kondisi,
+      status: filters?.status,
       search: filters?.search,
       jurusanKode: filters?.jurusan,
+      ruanganId: filters?.ruangan_id,
     },
     actor
   );
 
   let result = assets.map(mapAssetToLegacyBarang);
 
-  if (filters?.sort) {
+  // Sorting
+  const sortBy = filters?.sort_by;
+  const sortDir = (filters?.sort_dir || 'asc').toLowerCase() === 'desc' ? 'desc' : 'asc';
+  const multiplier = sortDir === 'desc' ? -1 : 1;
+
+  if (sortBy) {
+    result.sort((a, b) => {
+      let valA = '';
+      let valB = '';
+
+      switch (sortBy) {
+        case 'kode':
+        case 'kode_unit':
+          valA = a.kode || '';
+          valB = b.kode || '';
+          return valA.localeCompare(valB, undefined, { numeric: true }) * multiplier;
+        case 'kode_kelompok':
+        case 'jenis_barang':
+          valA = a.kode_kelompok || '';
+          valB = b.kode_kelompok || '';
+          return valA.localeCompare(valB, undefined, { numeric: true }) * multiplier;
+        case 'nama':
+        case 'nama_barang':
+          valA = a.nama || '';
+          valB = b.nama || '';
+          return valA.localeCompare(valB) * multiplier;
+        case 'jurusan':
+          valA = a.jurusan || '';
+          valB = b.jurusan || '';
+          return valA.localeCompare(valB) * multiplier;
+        case 'ruangan':
+          valA = a.ruangan || '';
+          valB = b.ruangan || '';
+          return valA.localeCompare(valB) * multiplier;
+        case 'kondisi':
+          valA = a.kondisi || '';
+          valB = b.kondisi || '';
+          return valA.localeCompare(valB) * multiplier;
+        case 'status':
+          valA = a.status || '';
+          valB = b.status || '';
+          return valA.localeCompare(valB) * multiplier;
+        case 'id':
+          return (a.id - b.id) * multiplier;
+        case 'created_at':
+          return (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) * multiplier;
+        default:
+          return 0;
+      }
+    });
+  } else if (filters?.sort) {
     switch (filters.sort) {
       case 'nama_asc':
         result.sort((a, b) => a.nama.localeCompare(b.nama));
@@ -95,9 +163,10 @@ export async function getBarangById(id: number, actor?: UserSession | null): Pro
 
 export async function createBarang(data: BarangFormData, actor?: UserSession | null): Promise<ServiceResult<Barang>> {
   try {
-    let jurId = 1;
+    let jurId = data.jurusan_id || 1;
     if (data.jurusan === 'ATPH') jurId = 2;
     if (data.jurusan === 'TBSM') jurId = 3;
+    if (data.jurusan === 'RPL') jurId = 1;
 
     // Scope check: if actor is scoped, force their department
     const scope = getDataScope(actor);
@@ -113,8 +182,8 @@ export async function createBarang(data: BarangFormData, actor?: UserSession | n
       {
         nama_barang: data.nama,
         jurusan_id: jurId,
-        kategori_name: data.kategori,
-        ruangan_name: data.ruangan,
+        ruangan_id: data.ruangan_id,
+        ruangan_nama: data.ruangan,
         merk: data.merk,
         tipe: data.tipe,
         jumlah: data.jumlah || 1,
@@ -169,6 +238,7 @@ export async function updateBarang(
         tipe: data.tipe,
         nomor_seri: data.nomor_seri,
         kondisi: kondisiNorm,
+        ruangan_id: data.ruangan_id,
         tahun_perolehan: data.tahun_perolehan,
         sumber_dana: data.sumber_dana,
         harga_perolehan: data.harga_perolehan,

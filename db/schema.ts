@@ -18,23 +18,20 @@ export const jurusan = pgTable('jurusan', {
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
-// 2. Categories
-export const categories = pgTable('categories', {
-  id: serial('id').primaryKey(),
-  name: varchar('name', { length: 100 }).notNull().unique(),
-  description: text('description'),
-  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
-
-// 3. Rooms
+// 2. Rooms (Master Ruangan Dinamis)
 export const rooms = pgTable('rooms', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 100 }).notNull(),
+  kode_ruangan: varchar('kode_ruangan', { length: 50 }),
   jurusan_id: integer('jurusan_id').references(() => jurusan.id, { onDelete: 'set null' }),
+  lokasi: varchar('lokasi', { length: 255 }),
+  is_active: boolean('is_active').default(true).notNull(),
+  keterangan: text('keterangan'),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
-// 4. Users (RBAC 6 Roles)
+// 3. Users (RBAC 6 Roles)
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
@@ -49,7 +46,7 @@ export const users = pgTable('users', {
   updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
-// 5. Asset Groups (Kelompok Barang: e.g. BRG-RPL-001)
+// 4. Asset Groups (Kelompok / Jenis Barang: e.g. BRG-RPL-001)
 export const assetGroups = pgTable('asset_groups', {
   id: serial('id').primaryKey(),
   kode_kelompok: varchar('kode_kelompok', { length: 50 }).notNull().unique(),
@@ -57,7 +54,6 @@ export const assetGroups = pgTable('asset_groups', {
   jurusan_id: integer('jurusan_id')
     .notNull()
     .references(() => jurusan.id, { onDelete: 'restrict' }),
-  kategori_id: integer('kategori_id').references(() => categories.id, { onDelete: 'set null' }),
   merk: varchar('merk', { length: 100 }),
   tipe: varchar('tipe', { length: 100 }),
   satuan: varchar('satuan', { length: 50 }).default('Unit'),
@@ -140,21 +136,41 @@ export const approvals = pgTable('approvals', {
   approved_at: timestamp('approved_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
-// 10. Asset Histories (Audit & Mutasi Riwayat Aset)
+// 10. Asset Maintenances (Riwayat Perawatan & Pemeliharaan Aset)
+export const assetMaintenances = pgTable('asset_maintenances', {
+  id: serial('id').primaryKey(),
+  asset_id: integer('asset_id')
+    .notNull()
+    .references(() => assets.id, { onDelete: 'cascade' }),
+  tanggal_perawatan: date('tanggal_perawatan').notNull(),
+  jenis_perawatan: varchar('jenis_perawatan', { length: 100 }).notNull(), // Pembersihan, Perbaikan, Servis Berkala, Penggantian Komponen, Kalibrasi, Inspeksi
+  deskripsi: text('deskripsi').notNull(),
+  pelaksana: varchar('pelaksana', { length: 255 }).notNull(),
+  biaya: numeric('biaya', { precision: 15, scale: 2 }).default('0').notNull(),
+  kondisi_sebelum: varchar('kondisi_sebelum', { length: 50 }).notNull(), // BAIK, RUSAK_RINGAN, RUSAK_BERAT
+  kondisi_sesudah: varchar('kondisi_sesudah', { length: 50 }).notNull(), // BAIK, RUSAK_RINGAN, RUSAK_BERAT
+  status: varchar('status', { length: 50 }).default('SELESAI').notNull(), // DIJADWALKAN, PROSES, SELESAI, DIBATALKAN
+  catatan: text('catatan'),
+  created_by: integer('created_by').references(() => users.id, { onDelete: 'set null' }),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+// 11. Asset Histories (Audit & Mutasi Riwayat Aset)
 export const assetHistories = pgTable('asset_histories', {
   id: serial('id').primaryKey(),
   asset_id: integer('asset_id')
     .notNull()
     .references(() => assets.id, { onDelete: 'cascade' }),
   user_id: integer('user_id').references(() => users.id, { onDelete: 'set null' }),
-  action: varchar('action', { length: 100 }).notNull(), // CREATED, STATUS_CHANGED, KONDISI_CHANGED, LOCATION_CHANGED, BORROWED, RETURNED
+  action: varchar('action', { length: 100 }).notNull(), // CREATED, STATUS_CHANGED, KONDISI_CHANGED, LOCATION_CHANGED, BORROWED, RETURNED, MAINTAINED
   old_value: text('old_value'),
   new_value: text('new_value'),
   description: text('description'),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
-// 11. Audit Logs (Log Aktivitas Sistem)
+// 12. Audit Logs (Log Aktivitas Sistem)
 export const auditLogs = pgTable('audit_logs', {
   id: serial('id').primaryKey(),
   user_id: integer('user_id').references(() => users.id, { onDelete: 'set null' }),
@@ -166,7 +182,7 @@ export const auditLogs = pgTable('audit_logs', {
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
-// 12. Notifications (Sistem Notifikasi)
+// 13. Notifications (Sistem Notifikasi)
 export const notifications = pgTable('notifications', {
   id: serial('id').primaryKey(),
   user_id: varchar('user_id', { length: 100 }).default('all').notNull(),
@@ -190,7 +206,6 @@ export const barang = pgTable('barang', {
 
 // Type inference
 export type Jurusan = typeof jurusan.$inferSelect;
-export type Category = typeof categories.$inferSelect;
 export type Room = typeof rooms.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type AssetGroup = typeof assetGroups.$inferSelect;
@@ -198,6 +213,7 @@ export type Asset = typeof assets.$inferSelect;
 export type Borrowing = typeof borrowings.$inferSelect;
 export type BorrowingItem = typeof borrowingItems.$inferSelect;
 export type Approval = typeof approvals.$inferSelect;
+export type AssetMaintenance = typeof assetMaintenances.$inferSelect;
 export type AssetHistory = typeof assetHistories.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type AppNotification = typeof notifications.$inferSelect;

@@ -2,7 +2,6 @@ import bcrypt from 'bcryptjs';
 import { db, isDbConnected } from '@/db';
 import {
   jurusan as jurusanTable,
-  categories as categoriesTable,
   rooms as roomsTable,
   users as usersTable,
   assetGroups as assetGroupsTable,
@@ -10,6 +9,7 @@ import {
   borrowings as borrowingsTable,
   borrowingItems as borrowingItemsTable,
   approvals as approvalsTable,
+  assetMaintenances as assetMaintenancesTable,
   assetHistories as assetHistoriesTable,
   auditLogs as auditLogsTable,
   notifications as notificationsTable,
@@ -19,13 +19,13 @@ import { eq, desc, and, sql } from 'drizzle-orm';
 import {
   UserSession,
   JurusanData,
-  CategoryData,
   RoomData,
   AssetGroupData,
   AssetData,
   BorrowingData,
   BorrowingItemData,
   ApprovalData,
+  AssetMaintenanceData,
   AssetHistoryData,
   AuditLogData,
   StatsData,
@@ -132,7 +132,6 @@ let memoryInitialized = false;
 
 interface InMemoryStore {
   jurusan: JurusanData[];
-  categories: CategoryData[];
   rooms: RoomData[];
   users: Array<{
     id: number;
@@ -149,6 +148,7 @@ interface InMemoryStore {
   }>;
   assetGroups: AssetGroupData[];
   assets: AssetData[];
+  assetMaintenances: AssetMaintenanceData[];
   borrowings: BorrowingData[];
   assetHistories: AssetHistoryData[];
   auditLogs: AuditLogData[];
@@ -161,26 +161,19 @@ const memoryStore: InMemoryStore = {
     { id: 2, kode: 'ATPH', nama: 'Agribisnis Tanaman Pangan dan Hortikultura' },
     { id: 3, kode: 'TBSM', nama: 'Teknik dan Bisnis Sepeda Motor' },
   ],
-  categories: [
-    { id: 1, name: 'Komputer & IT', description: 'Perangkat komputasi dan jaringan' },
-    { id: 2, name: 'Elektronik & Multimedia', description: 'Perangkat proyektor, audio, dan layar' },
-    { id: 3, name: 'Alat & Mesin Pertanian', description: 'Alat pengolahan tanah dan pasca panen' },
-    { id: 4, name: 'Kendaraan & Mesin Praktik', description: 'Unit sepeda motor dan mesin praktik' },
-    { id: 5, name: 'Perkakas & Toolset', description: 'Peralatan tangan mekanik dan kelistrikan' },
-    { id: 6, name: 'Furnitur & Sarana', description: 'Meja, kursi, dan lemari laboratorium' },
-  ],
   rooms: [
-    { id: 1, name: 'Lab Komputer RPL 1', jurusan_id: 1, jurusan_kode: 'RPL' },
-    { id: 2, name: 'Lab Software & RPL 2', jurusan_id: 1, jurusan_kode: 'RPL' },
-    { id: 3, name: 'Greenhouse ATPH', jurusan_id: 2, jurusan_kode: 'ATPH' },
-    { id: 4, name: 'Lahan Praktik Pertanian', jurusan_id: 2, jurusan_kode: 'ATPH' },
-    { id: 5, name: 'Bengkel TBSM 1 (Mesin)', jurusan_id: 3, jurusan_kode: 'TBSM' },
-    { id: 6, name: 'Bengkel TBSM 2 (Chasis)', jurusan_id: 3, jurusan_kode: 'TBSM' },
-    { id: 7, name: 'Gudang Utama Sarpras', jurusan_id: null, jurusan_kode: 'UMUM' },
+    { id: 1, name: 'Lab Komputer RPL 1', nama_ruangan: 'Lab Komputer RPL 1', kode_ruangan: 'LAB-RPL-01', jurusan_id: 1, jurusan_kode: 'RPL', lokasi: 'Gedung RPL Lt. 2', is_active: true, keterangan: 'Laboratorium Pemrograman & Jaringan', created_at: new Date('2026-01-01T08:00:00Z').toISOString(), updated_at: new Date('2026-01-01T08:00:00Z').toISOString() },
+    { id: 2, name: 'Lab Software & RPL 2', nama_ruangan: 'Lab Software & RPL 2', kode_ruangan: 'LAB-RPL-02', jurusan_id: 1, jurusan_kode: 'RPL', lokasi: 'Gedung RPL Lt. 2', is_active: true, keterangan: 'Laboratorium Rekayasa Perangkat Lunak', created_at: new Date('2026-01-01T08:00:00Z').toISOString(), updated_at: new Date('2026-01-01T08:00:00Z').toISOString() },
+    { id: 3, name: 'Greenhouse ATPH', nama_ruangan: 'Greenhouse ATPH', kode_ruangan: 'GH-ATPH-01', jurusan_id: 2, jurusan_kode: 'ATPH', lokasi: 'Area Kebun Praktik', is_active: true, keterangan: 'Rumah Kaca Pembibitan & Hidroponik', created_at: new Date('2026-01-01T08:00:00Z').toISOString(), updated_at: new Date('2026-01-01T08:00:00Z').toISOString() },
+    { id: 4, name: 'Lahan Praktik Pertanian', nama_ruangan: 'Lahan Praktik Pertanian', kode_ruangan: 'LHN-ATPH-01', jurusan_id: 2, jurusan_kode: 'ATPH', lokasi: 'Lahan Terbuka Belakang', is_active: true, keterangan: 'Lahan Tanaman Pangan & Hortikultura', created_at: new Date('2026-01-01T08:00:00Z').toISOString(), updated_at: new Date('2026-01-01T08:00:00Z').toISOString() },
+    { id: 5, name: 'Bengkel TBSM 1 (Mesin)', nama_ruangan: 'Bengkel TBSM 1 (Mesin)', kode_ruangan: 'BKL-TBSM-01', jurusan_id: 3, jurusan_kode: 'TBSM', lokasi: 'Gedung Bengkel Otomotif Lt. 1', is_active: true, keterangan: 'Area Praktik Mesin & Tune-up', created_at: new Date('2026-01-01T08:00:00Z').toISOString(), updated_at: new Date('2026-01-01T08:00:00Z').toISOString() },
+    { id: 6, name: 'Bengkel TBSM 2 (Chasis)', nama_ruangan: 'Bengkel TBSM 2 (Chasis)', kode_ruangan: 'BKL-TBSM-02', jurusan_id: 3, jurusan_kode: 'TBSM', lokasi: 'Gedung Bengkel Otomotif Lt. 1', is_active: true, keterangan: 'Area Praktik Chasis & Kelistrikan', created_at: new Date('2026-01-01T08:00:00Z').toISOString(), updated_at: new Date('2026-01-01T08:00:00Z').toISOString() },
+    { id: 7, name: 'Gudang Utama Sarpras', nama_ruangan: 'Gudang Utama Sarpras', kode_ruangan: 'GDG-SARPRAS-01', jurusan_id: null, jurusan_kode: 'UMUM', lokasi: 'Gedung Pusat Administrasi Lt. 1', is_active: true, keterangan: 'Penyimpanan Aset Pusat Sekolah', created_at: new Date('2026-01-01T08:00:00Z').toISOString(), updated_at: new Date('2026-01-01T08:00:00Z').toISOString() },
   ],
   users: [],
   assetGroups: [],
   assets: [],
+  assetMaintenances: [],
   borrowings: [],
   assetHistories: [],
   auditLogs: [],
@@ -221,8 +214,6 @@ export async function initializeMemoryStore() {
     nama_barang: 'Komputer PC Core i7 Lab RPL',
     jurusan_id: 1,
     jurusan_kode: 'RPL',
-    kategori_id: 1,
-    kategori_nama: 'Komputer & IT',
     merk: 'Dell OptiPlex',
     tipe: '7090 Tower',
     satuan: 'Unit',
@@ -241,7 +232,6 @@ export async function initializeMemoryStore() {
       kode_barang: `BRG-RPL-001-${unitPad}`,
       nomor_unit: u,
       nama_barang: 'Komputer PC Core i7 Lab RPL',
-      kategori: 'Komputer & IT',
       jurusan_kode: 'RPL',
       jurusan_nama: 'Rekayasa Perangkat Lunak',
       merk: 'Dell OptiPlex',
@@ -268,8 +258,6 @@ export async function initializeMemoryStore() {
     nama_barang: 'Laptop Lenovo ThinkPad E14',
     jurusan_id: 1,
     jurusan_kode: 'RPL',
-    kategori_id: 1,
-    kategori_nama: 'Komputer & IT',
     merk: 'Lenovo',
     tipe: 'ThinkPad E14 Gen 4',
     satuan: 'Unit',
@@ -288,7 +276,6 @@ export async function initializeMemoryStore() {
       kode_barang: `BRG-RPL-002-${unitPad}`,
       nomor_unit: u,
       nama_barang: 'Laptop Lenovo ThinkPad E14',
-      kategori: 'Komputer & IT',
       jurusan_kode: 'RPL',
       jurusan_nama: 'Rekayasa Perangkat Lunak',
       merk: 'Lenovo',
@@ -315,8 +302,6 @@ export async function initializeMemoryStore() {
     nama_barang: 'Hand Traktor Pengolah Tanah Quick G1000',
     jurusan_id: 2,
     jurusan_kode: 'ATPH',
-    kategori_id: 3,
-    kategori_nama: 'Alat & Mesin Pertanian',
     merk: 'Quick',
     tipe: 'G1000 Boxer Kubota RD 85',
     satuan: 'Unit',
@@ -335,7 +320,6 @@ export async function initializeMemoryStore() {
       kode_barang: `BRG-ATPH-001-${unitPad}`,
       nomor_unit: u,
       nama_barang: 'Hand Traktor Pengolah Tanah Quick G1000',
-      kategori: 'Alat & Mesin Pertanian',
       jurusan_kode: 'ATPH',
       jurusan_nama: 'Agribisnis Tanaman Pangan dan Hortikultura',
       merk: 'Quick',
@@ -362,8 +346,6 @@ export async function initializeMemoryStore() {
     nama_barang: 'Sepeda Motor Praktik Honda Beat 110cc',
     jurusan_id: 3,
     jurusan_kode: 'TBSM',
-    kategori_id: 4,
-    kategori_nama: 'Kendaraan & Mesin Praktik',
     merk: 'Honda',
     tipe: 'Beat eSP PGM-FI',
     satuan: 'Unit',
@@ -382,7 +364,6 @@ export async function initializeMemoryStore() {
       kode_barang: `BRG-TBSM-001-${unitPad}`,
       nomor_unit: u,
       nama_barang: 'Sepeda Motor Praktik Honda Beat 110cc',
-      kategori: 'Kendaraan & Mesin Praktik',
       jurusan_kode: 'TBSM',
       jurusan_nama: 'Teknik dan Bisnis Sepeda Motor',
       merk: 'Honda',
@@ -409,8 +390,6 @@ export async function initializeMemoryStore() {
     nama_barang: 'Tool Set Mekanik Lengkap 120 Pcs',
     jurusan_id: 3,
     jurusan_kode: 'TBSM',
-    kategori_id: 5,
-    kategori_nama: 'Perkakas & Toolset',
     merk: 'Tekiro',
     tipe: '120 Pcs Mechanic Box Set',
     satuan: 'Set',
@@ -429,7 +408,6 @@ export async function initializeMemoryStore() {
       kode_barang: `BRG-TBSM-002-${unitPad}`,
       nomor_unit: u,
       nama_barang: 'Tool Set Mekanik Lengkap 120 Pcs',
-      kategori: 'Perkakas & Toolset',
       jurusan_kode: 'TBSM',
       jurusan_nama: 'Teknik dan Bisnis Sepeda Motor',
       merk: 'Tekiro',
@@ -488,6 +466,86 @@ export async function initializeMemoryStore() {
     updated_at: new Date().toISOString(),
   };
   memoryStore.borrowings.push(sampleBorrowing);
+
+  // Initial Asset Maintenances (Riwayat Perawatan)
+  memoryStore.assetMaintenances.push(
+    {
+      id: 1,
+      asset_id: 1, // BRG-RPL-001-001
+      kode_barang: 'BRG-RPL-001-001',
+      nama_barang: 'Komputer PC Core i7 Lab RPL',
+      tanggal_perawatan: '2026-08-15',
+      jenis_perawatan: 'Pembersihan & Ganti Thermal Paste',
+      deskripsi: 'Pembersihan debu motherboard, heatsink fan, dan penggantian thermal paste CPU.',
+      pelaksana: 'Laboran RPL',
+      biaya: 0,
+      kondisi_sebelum: 'BAIK',
+      kondisi_sesudah: 'BAIK',
+      status: 'SELESAI',
+      catatan: 'Temperatur kerja normal stabil pada 42°C.',
+      created_by: 8,
+      created_by_name: 'Laboran RPL',
+      created_at: new Date('2026-08-15T09:00:00Z').toISOString(),
+      updated_at: new Date('2026-08-15T11:30:00Z').toISOString(),
+    },
+    {
+      id: 2,
+      asset_id: 8, // BRG-RPL-002-003
+      kode_barang: 'BRG-RPL-002-003',
+      nama_barang: 'Laptop Lenovo ThinkPad E14',
+      tanggal_perawatan: '2026-09-02',
+      jenis_perawatan: 'Perbaikan Keyboard',
+      deskripsi: 'Pemeriksaan tombol enter macet dan pembersihan switch keyboard.',
+      pelaksana: 'Laboran RPL',
+      biaya: 50000,
+      kondisi_sebelum: 'RUSAK_RINGAN',
+      kondisi_sesudah: 'RUSAK_RINGAN',
+      status: 'PROSES',
+      catatan: 'Menunggu penggantian modul switch keyboard cadangan.',
+      created_by: 8,
+      created_by_name: 'Laboran RPL',
+      created_at: new Date('2026-09-02T10:00:00Z').toISOString(),
+      updated_at: new Date('2026-09-02T10:00:00Z').toISOString(),
+    },
+    {
+      id: 3,
+      asset_id: 9, // BRG-ATPH-001-001
+      kode_barang: 'BRG-ATPH-001-001',
+      nama_barang: 'Hand Traktor Quick G 1000 Boxer',
+      tanggal_perawatan: '2026-08-20',
+      jenis_perawatan: 'Servis Berkala & Ganti Oli Mesin',
+      deskripsi: 'Penggantian oli mesin diesel Kubota RD 85, penyetelan v-belt penggerak, dan pelumasan rantai gardan.',
+      pelaksana: 'Teknisi Bengkel Pertanian',
+      biaya: 175000,
+      kondisi_sebelum: 'BAIK',
+      kondisi_sesudah: 'BAIK',
+      status: 'SELESAI',
+      catatan: 'Mesin siap operasional untuk praktikum pengolahan lahan.',
+      created_by: 9,
+      created_by_name: 'Laboran ATPH',
+      created_at: new Date('2026-08-20T08:30:00Z').toISOString(),
+      updated_at: new Date('2026-08-20T12:00:00Z').toISOString(),
+    },
+    {
+      id: 4,
+      asset_id: 12, // BRG-TBSM-001-001
+      kode_barang: 'BRG-TBSM-001-001',
+      nama_barang: 'Sepeda Motor Honda Beat FI ESP Praktik',
+      tanggal_perawatan: '2026-08-25',
+      jenis_perawatan: 'Tune Up & Kalibrasi Injeksi',
+      deskripsi: 'Pembersihan throttle body simulator, penggantian busi NGK, dan reset nilai ECM.',
+      pelaksana: 'Laboran TBSM',
+      biaya: 85000,
+      kondisi_sebelum: 'BAIK',
+      kondisi_sesudah: 'BAIK',
+      status: 'SELESAI',
+      catatan: 'Kalibrasi TPS dan AFR telah sesuai standar servis pabrikan.',
+      created_by: 10,
+      created_by_name: 'Laboran TBSM',
+      created_at: new Date('2026-08-25T09:00:00Z').toISOString(),
+      updated_at: new Date('2026-08-25T11:00:00Z').toISOString(),
+    }
+  );
 
   // Initial Notifications
   memoryStore.notifications.push(
@@ -927,36 +985,294 @@ export async function getMasterJurusan(): Promise<JurusanData[]> {
   return memoryStore.jurusan;
 }
 
-export async function getMasterCategories(): Promise<CategoryData[]> {
+export async function getMasterCategories(): Promise<{ id: number; name: string; description?: string | null }[]> {
   await initializeMemoryStore();
-  if (isDbConnected && db) {
-    try {
-      const rows = await db.select().from(categoriesTable).orderBy(categoriesTable.id);
-      if (rows.length > 0) return rows as CategoryData[];
-    } catch (e) {
-      console.warn('DB getMasterCategories error:', e);
-    }
-  }
-  return memoryStore.categories;
+  return [];
 }
 
-export async function getMasterRooms(jurusanId?: number | null): Promise<RoomData[]> {
+export async function getMasterRooms(
+  jurusanId?: number | null,
+  actor?: UserSession | null,
+  activeOnly = false
+): Promise<RoomData[]> {
   await initializeMemoryStore();
+
+  let roomList = [...memoryStore.rooms];
+
+  // RBAC and Jurusan Scope filter
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanId) {
+    roomList = roomList.filter((r) => !r.jurusan_id || r.jurusan_id === scope.jurusanId);
+  } else if (jurusanId) {
+    roomList = roomList.filter((r) => !r.jurusan_id || r.jurusan_id === jurusanId);
+  }
+
+  if (activeOnly) {
+    roomList = roomList.filter((r) => r.is_active !== false);
+  }
+
+  // Populate jurusan_kode and nama_ruangan
+  return roomList.map((r) => {
+    const jur = r.jurusan_id ? memoryStore.jurusan.find((j) => j.id === r.jurusan_id) : null;
+    return {
+      ...r,
+      nama_ruangan: r.nama_ruangan || r.name,
+      jurusan_kode: jur ? jur.kode : r.jurusan_kode || 'UMUM',
+    };
+  });
+}
+
+export async function getRoomById(
+  id: number,
+  actor?: UserSession | null
+): Promise<RoomData | null> {
+  await initializeMemoryStore();
+  const room = memoryStore.rooms.find((r) => r.id === id);
+  if (!room) return null;
+
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanId && room.jurusan_id && room.jurusan_id !== scope.jurusanId) {
+    return null;
+  }
+
+  const jur = room.jurusan_id ? memoryStore.jurusan.find((j) => j.id === room.jurusan_id) : null;
+  return {
+    ...room,
+    nama_ruangan: room.nama_ruangan || room.name,
+    jurusan_kode: jur ? jur.kode : room.jurusan_kode || 'UMUM',
+  };
+}
+
+export async function createRoom(
+  data: {
+    name: string;
+    kode_ruangan?: string;
+    jurusan_id?: number | null;
+    lokasi?: string;
+    keterangan?: string;
+  },
+  actor?: UserSession
+): Promise<{ success: boolean; room?: RoomData; message?: string }> {
+  await initializeMemoryStore();
+
+  if (actor && !hasPermission(actor.role, 'asset.create') && actor.role !== 'SUPER_ADMIN' && actor.role !== 'OPERATOR' && actor.role !== 'LABORAN') {
+    return { success: false, message: 'Anda tidak memiliki hak akses untuk menambah data ruangan.' };
+  }
+
+  const scope = getDataScope(actor);
+  let targetJurusanId = data.jurusan_id ?? null;
+
+  // Auto-assign / Enforce Jurusan for Laboran / Kakom
+  if (scope.isScoped && scope.jurusanId) {
+    targetJurusanId = scope.jurusanId;
+  }
+
+  const jur = targetJurusanId ? memoryStore.jurusan.find((j) => j.id === targetJurusanId) : null;
+  const now = new Date().toISOString();
+  const newId = memoryStore.rooms.length > 0 ? Math.max(...memoryStore.rooms.map((r) => r.id)) + 1 : 1;
+
+  const newRoom: RoomData = {
+    id: newId,
+    name: data.name.trim(),
+    nama_ruangan: data.name.trim(),
+    kode_ruangan: data.kode_ruangan?.trim() || `R-${jur ? jur.kode : 'UMUM'}-${String(newId).padStart(2, '0')}`,
+    jurusan_id: targetJurusanId,
+    jurusan_kode: jur ? jur.kode : 'UMUM',
+    lokasi: data.lokasi?.trim() || null,
+    is_active: true,
+    keterangan: data.keterangan?.trim() || null,
+    created_at: now,
+    updated_at: now,
+  };
+
+  memoryStore.rooms.push(newRoom);
+
   if (isDbConnected && db) {
     try {
-      const query = db.select().from(roomsTable);
-      const rows = jurusanId
-        ? await query.where(eq(roomsTable.jurusan_id, jurusanId))
-        : await query;
-      if (rows.length > 0) return rows as RoomData[];
+      await db.insert(roomsTable).values({
+        name: newRoom.name,
+        kode_ruangan: newRoom.kode_ruangan,
+        jurusan_id: newRoom.jurusan_id,
+        lokasi: newRoom.lokasi,
+        is_active: true,
+        keterangan: newRoom.keterangan,
+      });
     } catch (e) {
-      console.warn('DB getMasterRooms error:', e);
+      console.warn('DB insert error in createRoom:', e);
     }
   }
-  if (jurusanId) {
-    return memoryStore.rooms.filter((r) => !r.jurusan_id || r.jurusan_id === jurusanId);
+
+  await logAudit({
+    user_id: actor?.id,
+    user_name: actor?.name,
+    user_role: actor?.role,
+    action: 'ROOM_CREATED',
+    target: 'ROOM',
+    target_id: String(newId),
+    description: `Ruangan baru "${newRoom.name}" (${newRoom.kode_ruangan}) ditambahkan oleh ${actor?.name || 'Sistem'}.`,
+  });
+
+  return { success: true, room: newRoom, message: `Ruangan "${newRoom.name}" berhasil dibuat.` };
+}
+
+export async function updateRoom(
+  id: number,
+  data: Partial<RoomData>,
+  actor?: UserSession
+): Promise<{ success: boolean; room?: RoomData; message?: string }> {
+  await initializeMemoryStore();
+
+  const room = memoryStore.rooms.find((r) => r.id === id);
+  if (!room) return { success: false, message: 'Ruangan tidak ditemukan.' };
+
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanId && room.jurusan_id && room.jurusan_id !== scope.jurusanId) {
+    return { success: false, message: `Anda hanya dapat mengubah data ruangan di jurusan Anda sendiri (${scope.jurusanKode}).` };
   }
-  return memoryStore.rooms;
+
+  const now = new Date().toISOString();
+  if (data.name) {
+    room.name = data.name.trim();
+    room.nama_ruangan = data.name.trim();
+  }
+  if (data.kode_ruangan !== undefined) room.kode_ruangan = data.kode_ruangan?.trim() || null;
+  if (data.lokasi !== undefined) room.lokasi = data.lokasi?.trim() || null;
+  if (data.keterangan !== undefined) room.keterangan = data.keterangan?.trim() || null;
+  if (data.is_active !== undefined) room.is_active = data.is_active;
+
+  if (!scope.isScoped && data.jurusan_id !== undefined) {
+    room.jurusan_id = data.jurusan_id;
+    const jur = data.jurusan_id ? memoryStore.jurusan.find((j) => j.id === data.jurusan_id) : null;
+    room.jurusan_kode = jur ? jur.kode : 'UMUM';
+  }
+
+  room.updated_at = now;
+
+  // Also update room names in active assets located in this room
+  for (const asset of memoryStore.assets) {
+    if (asset.ruangan_id === id) {
+      asset.ruangan_nama = room.name;
+    }
+  }
+
+  if (isDbConnected && db) {
+    try {
+      await db
+        .update(roomsTable)
+        .set({
+          name: room.name,
+          kode_ruangan: room.kode_ruangan,
+          jurusan_id: room.jurusan_id,
+          lokasi: room.lokasi,
+          is_active: room.is_active,
+          keterangan: room.keterangan,
+          updated_at: new Date(),
+        })
+        .where(eq(roomsTable.id, id));
+    } catch (e) {
+      console.warn('DB update error in updateRoom:', e);
+    }
+  }
+
+  await logAudit({
+    user_id: actor?.id,
+    user_name: actor?.name,
+    user_role: actor?.role,
+    action: 'ROOM_UPDATED',
+    target: 'ROOM',
+    target_id: String(id),
+    description: `Ruangan "${room.name}" (${room.kode_ruangan}) diperbarui oleh ${actor?.name || 'Sistem'}.`,
+  });
+
+  return { success: true, room, message: `Data ruangan "${room.name}" berhasil diperbarui.` };
+}
+
+export async function toggleRoomStatus(
+  id: number,
+  actor?: UserSession
+): Promise<{ success: boolean; is_active?: boolean; message?: string }> {
+  await initializeMemoryStore();
+
+  const room = memoryStore.rooms.find((r) => r.id === id);
+  if (!room) return { success: false, message: 'Ruangan tidak ditemukan.' };
+
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanId && room.jurusan_id && room.jurusan_id !== scope.jurusanId) {
+    return { success: false, message: `Anda hanya dapat mengubah status ruangan di jurusan Anda sendiri (${scope.jurusanKode}).` };
+  }
+
+  room.is_active = !room.is_active;
+  room.updated_at = new Date().toISOString();
+
+  if (isDbConnected && db) {
+    try {
+      await db
+        .update(roomsTable)
+        .set({ is_active: room.is_active, updated_at: new Date() })
+        .where(eq(roomsTable.id, id));
+    } catch (e) {
+      console.warn('DB update error in toggleRoomStatus:', e);
+    }
+  }
+
+  await logAudit({
+    user_id: actor?.id,
+    user_name: actor?.name,
+    user_role: actor?.role,
+    action: 'ROOM_STATUS_TOGGLED',
+    target: 'ROOM',
+    target_id: String(id),
+    description: `Status ruangan "${room.name}" diubah menjadi ${room.is_active ? 'AKTIF' : 'NONAKTIF'} oleh ${actor?.name || 'Sistem'}.`,
+  });
+
+  return { success: true, is_active: room.is_active, message: `Ruangan sekarang ${room.is_active ? 'Aktif' : 'Nonaktif'}.` };
+}
+
+export async function deleteRoom(
+  id: number,
+  actor?: UserSession
+): Promise<{ success: boolean; message?: string }> {
+  await initializeMemoryStore();
+
+  const idx = memoryStore.rooms.findIndex((r) => r.id === id);
+  if (idx === -1) return { success: false, message: 'Ruangan tidak ditemukan.' };
+
+  const room = memoryStore.rooms[idx];
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanId && room.jurusan_id && room.jurusan_id !== scope.jurusanId) {
+    return { success: false, message: `Anda hanya dapat menghapus ruangan di jurusan Anda sendiri (${scope.jurusanKode}).` };
+  }
+
+  // Check if any assets currently belong to this room
+  const assetsInRoom = memoryStore.assets.filter((a) => a.ruangan_id === id);
+  if (assetsInRoom.length > 0) {
+    return {
+      success: false,
+      message: `Tidak dapat menghapus ruangan "${room.name}" karena masih menampung ${assetsInRoom.length} unit aset. Pindahkan aset terlebih dahulu.`,
+    };
+  }
+
+  memoryStore.rooms.splice(idx, 1);
+
+  if (isDbConnected && db) {
+    try {
+      await db.delete(roomsTable).where(eq(roomsTable.id, id));
+    } catch (e) {
+      console.warn('DB delete error in deleteRoom:', e);
+    }
+  }
+
+  await logAudit({
+    user_id: actor?.id,
+    user_name: actor?.name,
+    user_role: actor?.role,
+    action: 'ROOM_DELETED',
+    target: 'ROOM',
+    target_id: String(id),
+    description: `Ruangan "${room.name}" (${room.kode_ruangan}) dihapus oleh ${actor?.name || 'Sistem'}.`,
+  });
+
+  return { success: true, message: `Ruangan "${room.name}" berhasil dihapus.` };
 }
 
 // ----------------------------------------------------
@@ -985,13 +1301,24 @@ export async function generateNextUnitCodes(
   quantity: number
 ): Promise<{ startingUnitNumber: number; unitCodes: string[] }> {
   await initializeMemoryStore();
-  const group = memoryStore.assetGroups.find((g) => g.kode_kelompok === groupCode);
 
-  const existingUnits = memoryStore.assets
+  const activeUnitNums = memoryStore.assets
     .filter((a) => a.kode_barang.startsWith(`${groupCode}-`))
-    .map((a) => a.nomor_unit);
+    .map((a) => a.nomor_unit || parseInt(a.kode_barang.split('-').pop() || '0', 10));
 
-  const highestUnit = existingUnits.length > 0 ? Math.max(...existingUnits) : 0;
+  const historyUnitNums = memoryStore.assetHistories
+    .filter((h) => h.kode_barang && h.kode_barang.startsWith(`${groupCode}-`))
+    .map((h) => parseInt(h.kode_barang!.split('-').pop() || '0', 10));
+
+  const auditUnitNums = memoryStore.auditLogs
+    .filter((l) => l.target_id && l.target_id.startsWith(`${groupCode}-`))
+    .map((l) => parseInt(l.target_id!.split('-').pop() || '0', 10));
+
+  const allNums = [...activeUnitNums, ...historyUnitNums, ...auditUnitNums].filter(
+    (n) => !isNaN(n) && n > 0
+  );
+
+  const highestUnit = allNums.length > 0 ? Math.max(...allNums) : 0;
   const unitCodes: string[] = [];
 
   for (let i = 1; i <= quantity; i++) {
@@ -1002,6 +1329,256 @@ export async function generateNextUnitCodes(
   return {
     startingUnitNumber: highestUnit + 1,
     unitCodes,
+  };
+}
+
+// ----------------------------------------------------
+// ASSET GROUPS / JENIS BARANG MANAGEMENT
+// ----------------------------------------------------
+
+export async function getAssetGroups(
+  filters?: {
+    jurusanId?: number;
+    jurusanKode?: string;
+    search?: string;
+  },
+  actor?: UserSession | null
+): Promise<AssetGroupData[]> {
+  await initializeMemoryStore();
+
+  let groups = [...memoryStore.assetGroups];
+
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanKode) {
+    groups = groups.filter((g) => g.jurusan_kode === scope.jurusanKode);
+  } else {
+    if (filters?.jurusanId) {
+      groups = groups.filter((g) => g.jurusan_id === filters.jurusanId);
+    }
+    if (filters?.jurusanKode && filters.jurusanKode !== 'SEMUA') {
+      groups = groups.filter((g) => g.jurusan_kode === filters.jurusanKode);
+    }
+  }
+
+  if (filters?.search && filters.search.trim()) {
+    const q = filters.search.toLowerCase().trim();
+    groups = groups.filter(
+      (g) =>
+        g.kode_kelompok.toLowerCase().includes(q) ||
+        g.nama_barang.toLowerCase().includes(q) ||
+        (g.merk && g.merk.toLowerCase().includes(q)) ||
+        (g.tipe && g.tipe.toLowerCase().includes(q))
+    );
+  }
+
+  // Dynamically compute total and available units from actual unit assets
+  for (const g of groups) {
+    const units = memoryStore.assets.filter((a) => a.asset_group_id === g.id);
+    g.total_units = units.length;
+    g.available_units = units.filter((a) => a.status === 'TERSEDIA').length;
+  }
+
+  groups.sort((a, b) => b.id - a.id);
+  return groups;
+}
+
+export async function getAssetGroupById(
+  id: number,
+  actor?: UserSession | null
+): Promise<AssetGroupData | null> {
+  await initializeMemoryStore();
+  const group = memoryStore.assetGroups.find((g) => g.id === id);
+  if (!group) return null;
+
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanKode && group.jurusan_kode !== scope.jurusanKode) {
+    return null;
+  }
+
+  const units = memoryStore.assets.filter((a) => a.asset_group_id === group.id);
+  group.total_units = units.length;
+  group.available_units = units.filter((a) => a.status === 'TERSEDIA').length;
+
+  return group;
+}
+
+export async function createAssetGroup(
+  data: {
+    nama_barang: string;
+    jurusan_id: number;
+    kategori_id?: number | null;
+    kategori_nama?: string | null;
+    merk?: string | null;
+    tipe?: string | null;
+    satuan?: string;
+  },
+  actor?: UserSession
+): Promise<{ success: boolean; group?: AssetGroupData; message?: string }> {
+  await initializeMemoryStore();
+
+  if (actor && !hasPermission(actor.role, 'asset.create')) {
+    return { success: false, message: 'Role Anda tidak memiliki izin untuk membuat jenis barang.' };
+  }
+
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanId) {
+    data.jurusan_id = scope.jurusanId;
+  }
+
+  const jur = memoryStore.jurusan.find((j) => j.id === data.jurusan_id);
+  if (!jur) return { success: false, message: 'Jurusan tidak valid.' };
+
+  if (scope.isScoped && scope.jurusanKode && jur.kode !== scope.jurusanKode) {
+    return { success: false, message: `Anda hanya dapat membuat jenis barang pada jurusan Anda sendiri (${scope.jurusanKode}).` };
+  }
+
+  const groupCode = await generateNextAssetGroupCode(jur.kode);
+  const now = new Date().toISOString();
+
+  const newGroup: AssetGroupData = {
+    id: memoryStore.assetGroups.length + 1,
+    kode_kelompok: groupCode,
+    nama_barang: data.nama_barang.trim(),
+    jurusan_id: jur.id,
+    jurusan_kode: jur.kode,
+    merk: data.merk || null,
+    tipe: data.tipe || null,
+    satuan: data.satuan || 'Unit',
+    total_units: 0,
+    available_units: 0,
+    created_at: now,
+    updated_at: now,
+  };
+
+  memoryStore.assetGroups.push(newGroup);
+
+  await logAudit({
+    user_id: actor?.id,
+    user_name: actor?.name,
+    user_role: actor?.role,
+    action: 'ASSET_GROUP_CREATED',
+    target: 'ASSET_GROUP',
+    target_id: groupCode,
+    description: `Jenis barang baru dibuat: ${groupCode} (${newGroup.nama_barang}) untuk jurusan ${jur.kode} oleh ${actor?.name || 'Sistem'}.`,
+  });
+
+  return {
+    success: true,
+    group: newGroup,
+    message: `Jenis barang ${groupCode} (${newGroup.nama_barang}) berhasil dibuat.`,
+  };
+}
+
+export async function createUnitsForAssetGroup(
+  data: {
+    asset_group_id: number;
+    jumlah: number;
+    kondisi: 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT' | string;
+    ruangan_id?: number | null;
+    ruangan_nama?: string | null;
+    tahun_perolehan?: number | null;
+    sumber_dana?: string | null;
+    harga_perolehan?: number | null;
+    nomor_seri_prefix?: string | null;
+    keterangan?: string | null;
+  },
+  actor?: UserSession
+): Promise<{ success: boolean; assetsCreated?: AssetData[]; message?: string }> {
+  await initializeMemoryStore();
+
+  if (actor && !hasPermission(actor.role, 'asset.create')) {
+    return { success: false, message: 'Role Anda tidak memiliki izin untuk menambah unit aset.' };
+  }
+
+  const group = memoryStore.assetGroups.find((g) => g.id === data.asset_group_id);
+  if (!group) return { success: false, message: 'Jenis barang tidak ditemukan.' };
+
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanKode && group.jurusan_kode !== scope.jurusanKode) {
+    return { success: false, message: `Anda hanya dapat menambah unit untuk jurusan Anda sendiri (${scope.jurusanKode}).` };
+  }
+
+  const jur = memoryStore.jurusan.find((j) => j.id === group.jurusan_id);
+  const room = data.ruangan_id
+    ? memoryStore.rooms.find((r) => r.id === data.ruangan_id)
+    : data.ruangan_nama
+    ? memoryStore.rooms.find((r) => r.name.toLowerCase() === data.ruangan_nama?.toLowerCase())
+    : memoryStore.rooms.find((r) => r.jurusan_id === group.jurusan_id) || memoryStore.rooms[0];
+
+  const qty = Math.max(1, data.jumlah || 1);
+  const { startingUnitNumber, unitCodes } = await generateNextUnitCodes(group.kode_kelompok, qty);
+  const createdUnits: AssetData[] = [];
+  const now = new Date().toISOString();
+
+  for (let i = 0; i < unitCodes.length; i++) {
+    const unitCode = unitCodes[i];
+    const unitNum = startingUnitNumber + i;
+    const sn = data.nomor_seri_prefix
+      ? `${data.nomor_seri_prefix}-${String(unitNum).padStart(3, '0')}`
+      : `SN-${group.jurusan_kode}-${group.kode_kelompok.split('-')[2]}-${String(unitNum).padStart(3, '0')}`;
+
+    const newAsset: AssetData = {
+      id: memoryStore.assets.length + 1,
+      asset_group_id: group.id,
+      kode_barang: unitCode,
+      nomor_unit: unitNum,
+      nama_barang: group.nama_barang,
+      jurusan_kode: group.jurusan_kode,
+      jurusan_nama: jur?.nama || group.jurusan_kode,
+      merk: group.merk || null,
+      tipe: group.tipe || null,
+      nomor_seri: sn,
+      ruangan_id: room ? room.id : null,
+      ruangan_nama: room ? room.name : null,
+      kondisi: (data.kondisi as any) || 'BAIK',
+      status: 'TERSEDIA',
+      tahun_perolehan: data.tahun_perolehan || new Date().getFullYear(),
+      sumber_dana: data.sumber_dana || 'Dana BOS',
+      harga_perolehan: data.harga_perolehan || 0,
+      keterangan: data.keterangan || `Unit ${unitNum}`,
+      created_by: actor?.id || 1,
+      created_at: now,
+      updated_at: now,
+    };
+
+    memoryStore.assets.push(newAsset);
+    createdUnits.push(newAsset);
+
+    // Record Asset History
+    memoryStore.assetHistories.push({
+      id: memoryStore.assetHistories.length + 1,
+      asset_id: newAsset.id,
+      kode_barang: newAsset.kode_barang,
+      nama_barang: newAsset.nama_barang,
+      user_id: actor?.id,
+      user_name: actor?.name,
+      action: 'CREATED',
+      old_value: null,
+      new_value: `Unit: ${unitCode}, Kondisi: ${newAsset.kondisi}, Lokasi: ${newAsset.ruangan_nama}`,
+      description: `Unit fisik ${unitCode} ditambahkan ke sistem oleh ${actor?.name || 'Sistem'}.`,
+      created_at: now,
+    });
+  }
+
+  // Update group counters
+  group.total_units = (group.total_units || 0) + qty;
+  group.available_units = (group.available_units || 0) + qty;
+  group.updated_at = now;
+
+  await logAudit({
+    user_id: actor?.id,
+    user_name: actor?.name,
+    user_role: actor?.role,
+    action: 'UNIT_ASSETS_CREATED',
+    target: 'ASSET_GROUP',
+    target_id: group.kode_kelompok,
+    description: `Menambahkan ${qty} unit barang baru pada kelompok ${group.kode_kelompok} (${group.nama_barang}) oleh ${actor?.name || 'Sistem'}.`,
+  });
+
+  return {
+    success: true,
+    assetsCreated: createdUnits,
+    message: `Berhasil menambahkan ${qty} unit (${unitCodes[0]} s/d ${unitCodes[unitCodes.length - 1]}).`,
   };
 }
 
@@ -1104,11 +1681,12 @@ export async function createAssetWithUnits(
     kategori_id?: number;
     kategori_name?: string;
     ruangan_id?: number;
-    ruangan_name?: string;
+    ruangan_nama?: string;
+    ruangan?: string;
     merk?: string;
     tipe?: string;
     jumlah: number;
-    kondisi: 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT';
+    kondisi: 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT' | string;
     tahun_perolehan?: number;
     sumber_dana?: string;
     harga_perolehan?: number;
@@ -1136,13 +1714,12 @@ export async function createAssetWithUnits(
     return { success: false, message: `Anda hanya dapat menambah aset untuk jurusan Anda sendiri (${scope.jurusanKode}).` };
   }
 
-  const kat = data.kategori_id
-    ? memoryStore.categories.find((c) => c.id === data.kategori_id)
-    : memoryStore.categories.find((c) => c.name.toLowerCase() === data.kategori_name?.toLowerCase()) || memoryStore.categories[0];
-
+  const targetRoomName = data.ruangan_nama || data.ruangan;
   const room = data.ruangan_id
     ? memoryStore.rooms.find((r) => r.id === data.ruangan_id)
-    : memoryStore.rooms.find((r) => r.name.toLowerCase() === data.ruangan_name?.toLowerCase()) || memoryStore.rooms[0];
+    : targetRoomName
+    ? memoryStore.rooms.find((r) => r.name.toLowerCase() === targetRoomName.toLowerCase() || (r.nama_ruangan && r.nama_ruangan.toLowerCase() === targetRoomName.toLowerCase()))
+    : memoryStore.rooms.find((r) => r.jurusan_id === jur.id && r.is_active !== false) || memoryStore.rooms[0];
 
   // 1. Generate Group Code
   const groupCode = await generateNextAssetGroupCode(jur.kode);
@@ -1154,8 +1731,6 @@ export async function createAssetWithUnits(
     nama_barang: data.nama_barang.trim(),
     jurusan_id: jur.id,
     jurusan_kode: jur.kode,
-    kategori_id: kat ? kat.id : null,
-    kategori_nama: kat ? kat.name : data.kategori_name || 'Umum',
     merk: data.merk || null,
     tipe: data.tipe || null,
     satuan: 'Unit',
@@ -1184,14 +1759,14 @@ export async function createAssetWithUnits(
       kode_barang: unitCode,
       nomor_unit: unitNum,
       nama_barang: data.nama_barang.trim(),
-      kategori: kat ? kat.name : 'Umum',
+      jurusan_id: jur.id,
       jurusan_kode: jur.kode,
       jurusan_nama: jur.nama,
       merk: data.merk || null,
       tipe: data.tipe || null,
       nomor_seri: sn,
       ruangan_id: room ? room.id : null,
-      ruangan_nama: room ? room.name : null,
+      ruangan_nama: room ? (room.nama_ruangan || room.name) : null,
       kondisi: data.kondisi || 'BAIK',
       status: 'TERSEDIA',
       tahun_perolehan: data.tahun_perolehan || new Date().getFullYear(),
@@ -1366,6 +1941,367 @@ export async function deleteAsset(
   });
 
   return { success: true, message: 'Aset berhasil dihapus.' };
+}
+
+export async function getAssetByCode(
+  code: string,
+  actor?: UserSession | null
+): Promise<AssetData | null> {
+  await initializeMemoryStore();
+  const trimmed = code.trim().toLowerCase();
+  const asset = memoryStore.assets.find(
+    (a) => a.kode_barang.toLowerCase() === trimmed
+  );
+  if (!asset) return null;
+
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanKode && asset.jurusan_kode !== scope.jurusanKode) {
+    return null;
+  }
+
+  return asset;
+}
+
+export async function getAssetWithFullRelations(
+  idOrCode: number | string,
+  actor?: UserSession | null
+): Promise<{
+  asset: AssetData;
+  assetGroup: AssetGroupData | null;
+  maintenances: AssetMaintenanceData[];
+  borrowingHistory: BorrowingData[];
+  histories: AssetHistoryData[];
+} | null> {
+  await initializeMemoryStore();
+
+  let asset: AssetData | undefined;
+  if (typeof idOrCode === 'number' || !isNaN(Number(idOrCode))) {
+    const numId = Number(idOrCode);
+    asset = memoryStore.assets.find((a) => a.id === numId);
+  } else {
+    const trimmed = String(idOrCode).trim().toLowerCase();
+    asset = memoryStore.assets.find((a) => a.kode_barang.toLowerCase() === trimmed);
+  }
+
+  if (!asset) return null;
+
+  // Enforce data scope for KAKOM & LABORAN
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanKode && asset.jurusan_kode !== scope.jurusanKode) {
+    return null;
+  }
+
+  // 1. Get Parent Group / Jenis Barang
+  const assetGroup = memoryStore.assetGroups.find((g) => g.id === asset!.asset_group_id) || null;
+
+  // 2. Get Maintenances for this unit
+  const maintenances = memoryStore.assetMaintenances
+    .filter((m) => m.asset_id === asset!.id)
+    .sort((a, b) => new Date(b.tanggal_perawatan).getTime() - new Date(a.tanggal_perawatan).getTime());
+
+  // 3. Get Borrowings involving this unit
+  const borrowingHistory = memoryStore.borrowings
+    .filter((b) => b.items.some((it) => it.asset_id === asset!.id))
+    .sort((a, b) => b.id - a.id);
+
+  // 4. Get Asset Change Histories
+  const histories = memoryStore.assetHistories
+    .filter((h) => h.asset_id === asset!.id)
+    .sort((a, b) => b.id - a.id);
+
+  return {
+    asset,
+    assetGroup,
+    maintenances,
+    borrowingHistory,
+    histories,
+  };
+}
+
+// ----------------------------------------------------
+// ASSET MAINTENANCE / PERAWATAN SYSTEM
+// ----------------------------------------------------
+
+export async function getAssetMaintenances(
+  filters?: {
+    assetId?: number;
+    jurusanKode?: string;
+    status?: string;
+    search?: string;
+  },
+  actor?: UserSession | null
+): Promise<AssetMaintenanceData[]> {
+  await initializeMemoryStore();
+
+  let list = [...memoryStore.assetMaintenances];
+
+  // Enforce Data Scope for KAKOM & LABORAN
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanKode) {
+    const allowedAssetIds = new Set(
+      memoryStore.assets
+        .filter((a) => a.jurusan_kode === scope.jurusanKode)
+        .map((a) => a.id)
+    );
+    list = list.filter((m) => allowedAssetIds.has(m.asset_id));
+  } else {
+    if (filters?.jurusanKode && filters.jurusanKode !== 'SEMUA') {
+      const allowedAssetIds = new Set(
+        memoryStore.assets
+          .filter((a) => a.jurusan_kode === filters.jurusanKode)
+          .map((a) => a.id)
+      );
+      list = list.filter((m) => allowedAssetIds.has(m.asset_id));
+    }
+  }
+
+  if (filters?.assetId) {
+    list = list.filter((m) => m.asset_id === filters.assetId);
+  }
+
+  if (filters?.status && filters.status !== 'SEMUA') {
+    list = list.filter((m) => m.status === filters.status);
+  }
+
+  if (filters?.search && filters.search.trim()) {
+    const q = filters.search.toLowerCase().trim();
+    list = list.filter(
+      (m) =>
+        (m.kode_barang && m.kode_barang.toLowerCase().includes(q)) ||
+        (m.nama_barang && m.nama_barang.toLowerCase().includes(q)) ||
+        m.jenis_perawatan.toLowerCase().includes(q) ||
+        m.pelaksana.toLowerCase().includes(q) ||
+        m.deskripsi.toLowerCase().includes(q)
+    );
+  }
+
+  list.sort((a, b) => new Date(b.tanggal_perawatan).getTime() - new Date(a.tanggal_perawatan).getTime());
+  return list;
+}
+
+export async function getAssetMaintenanceById(
+  id: number,
+  actor?: UserSession | null
+): Promise<AssetMaintenanceData | null> {
+  await initializeMemoryStore();
+  const item = memoryStore.assetMaintenances.find((m) => m.id === id);
+  if (!item) return null;
+
+  const asset = memoryStore.assets.find((a) => a.id === item.asset_id);
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanKode && asset && asset.jurusan_kode !== scope.jurusanKode) {
+    return null;
+  }
+
+  return item;
+}
+
+export async function createAssetMaintenance(
+  data: {
+    asset_id: number;
+    tanggal_perawatan: string;
+    jenis_perawatan: string;
+    deskripsi: string;
+    pelaksana: string;
+    biaya: number;
+    kondisi_sebelum: 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT' | string;
+    kondisi_sesudah: 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT' | string;
+    status?: 'DIJADWALKAN' | 'PROSES' | 'SELESAI' | 'DIBATALKAN' | string;
+    catatan?: string | null;
+  },
+  actor?: UserSession
+): Promise<{ success: boolean; maintenance?: AssetMaintenanceData; message?: string }> {
+  await initializeMemoryStore();
+
+  if (actor && !hasPermission(actor.role, 'asset.update')) {
+    return { success: false, message: 'Role Anda tidak memiliki izin untuk mencatat perawatan aset.' };
+  }
+
+  const asset = memoryStore.assets.find((a) => a.id === data.asset_id);
+  if (!asset) return { success: false, message: 'Unit aset tidak ditemukan.' };
+
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanKode && asset.jurusan_kode !== scope.jurusanKode) {
+    return { success: false, message: `Anda hanya dapat mencatat perawatan pada jurusan Anda sendiri (${scope.jurusanKode}).` };
+  }
+
+  const now = new Date().toISOString();
+  const status = data.status || 'SELESAI';
+
+  const newMaintenance: AssetMaintenanceData = {
+    id: memoryStore.assetMaintenances.length + 1,
+    asset_id: asset.id,
+    kode_barang: asset.kode_barang,
+    nama_barang: asset.nama_barang,
+    tanggal_perawatan: data.tanggal_perawatan || new Date().toISOString().slice(0, 10),
+    jenis_perawatan: data.jenis_perawatan.trim(),
+    deskripsi: data.deskripsi.trim(),
+    pelaksana: data.pelaksana.trim(),
+    biaya: Number(data.biaya) || 0,
+    kondisi_sebelum: data.kondisi_sebelum || asset.kondisi,
+    kondisi_sesudah: data.kondisi_sesudah || data.kondisi_sebelum || asset.kondisi,
+    status: status,
+    catatan: data.catatan ? data.catatan.trim() : null,
+    created_by: actor?.id || 1,
+    created_by_name: actor?.name || 'Sistem',
+    created_at: now,
+    updated_at: now,
+  };
+
+  memoryStore.assetMaintenances.push(newMaintenance);
+
+  // Update Asset Status & Condition based on maintenance status
+  const prevStatus = asset.status;
+  const prevCondition = asset.kondisi;
+
+  if (status === 'PROSES' || status === 'DIJADWALKAN') {
+    asset.status = 'PERAWATAN';
+  } else if (status === 'SELESAI') {
+    asset.kondisi = data.kondisi_sesudah as any;
+    if (data.kondisi_sesudah === 'RUSAK_BERAT') {
+      asset.status = 'RUSAK';
+    } else if (data.kondisi_sesudah === 'RUSAK_RINGAN') {
+      asset.status = 'PERBAIKAN';
+    } else {
+      asset.status = 'TERSEDIA';
+    }
+  }
+  asset.updated_at = now;
+
+  // Insert into Asset Histories
+  memoryStore.assetHistories.push({
+    id: memoryStore.assetHistories.length + 1,
+    asset_id: asset.id,
+    kode_barang: asset.kode_barang,
+    nama_barang: asset.nama_barang,
+    user_id: actor?.id,
+    user_name: actor?.name,
+    action: 'MAINTAINED',
+    old_value: `Status: ${prevStatus}, Kondisi: ${prevCondition}`,
+    new_value: `Status: ${asset.status}, Kondisi: ${asset.kondisi}`,
+    description: `Perawatan (${data.jenis_perawatan}) dicatat oleh ${actor?.name || 'Sistem'}. Pelaksana: ${data.pelaksana}. Status: ${status}.`,
+    created_at: now,
+  });
+
+  await logAudit({
+    user_id: actor?.id,
+    user_name: actor?.name,
+    user_role: actor?.role,
+    action: 'ASSET_MAINTENANCE_CREATED',
+    target: 'MAINTENANCE',
+    target_id: asset.kode_barang,
+    description: `Catatan perawatan unit ${asset.kode_barang} (${data.jenis_perawatan}) dibuat oleh ${actor?.name || 'Sistem'}.`,
+  });
+
+  return {
+    success: true,
+    maintenance: newMaintenance,
+    message: 'Catatan perawatan berhasil disimpan dan status aset telah diperbarui.',
+  };
+}
+
+export async function updateAssetMaintenance(
+  id: number,
+  data: Partial<AssetMaintenanceData>,
+  actor?: UserSession
+): Promise<{ success: boolean; maintenance?: AssetMaintenanceData; message?: string }> {
+  await initializeMemoryStore();
+
+  if (actor && !hasPermission(actor.role, 'asset.update')) {
+    return { success: false, message: 'Role Anda tidak memiliki izin untuk mengedit catatan perawatan.' };
+  }
+
+  const item = memoryStore.assetMaintenances.find((m) => m.id === id);
+  if (!item) return { success: false, message: 'Catatan perawatan tidak ditemukan.' };
+
+  const asset = memoryStore.assets.find((a) => a.id === item.asset_id);
+  if (!asset) return { success: false, message: 'Unit aset terkait tidak ditemukan.' };
+
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanKode && asset.jurusan_kode !== scope.jurusanKode) {
+    return { success: false, message: `Anda hanya dapat mengedit perawatan pada jurusan Anda sendiri (${scope.jurusanKode}).` };
+  }
+
+  const now = new Date().toISOString();
+
+  if (data.tanggal_perawatan) item.tanggal_perawatan = data.tanggal_perawatan;
+  if (data.jenis_perawatan) item.jenis_perawatan = data.jenis_perawatan.trim();
+  if (data.deskripsi) item.deskripsi = data.deskripsi.trim();
+  if (data.pelaksana) item.pelaksana = data.pelaksana.trim();
+  if (data.biaya !== undefined) item.biaya = Number(data.biaya) || 0;
+  if (data.kondisi_sebelum) item.kondisi_sebelum = data.kondisi_sebelum;
+  if (data.kondisi_sesudah) item.kondisi_sesudah = data.kondisi_sesudah;
+  if (data.catatan !== undefined) item.catatan = data.catatan;
+  if (data.status) item.status = data.status;
+  item.updated_at = now;
+
+  // If status is updated, update asset status as well
+  if (item.status === 'SELESAI') {
+    asset.kondisi = item.kondisi_sesudah as any;
+    if (item.kondisi_sesudah === 'RUSAK_BERAT') {
+      asset.status = 'RUSAK';
+    } else if (item.kondisi_sesudah === 'RUSAK_RINGAN') {
+      asset.status = 'PERBAIKAN';
+    } else {
+      asset.status = 'TERSEDIA';
+    }
+    asset.updated_at = now;
+  } else if (item.status === 'PROSES' || item.status === 'DIJADWALKAN') {
+    asset.status = 'PERAWATAN';
+    asset.updated_at = now;
+  }
+
+  await logAudit({
+    user_id: actor?.id,
+    user_name: actor?.name,
+    user_role: actor?.role,
+    action: 'ASSET_MAINTENANCE_UPDATED',
+    target: 'MAINTENANCE',
+    target_id: asset.kode_barang,
+    description: `Catatan perawatan #${id} (${item.jenis_perawatan}) untuk ${asset.kode_barang} diperbarui oleh ${actor?.name || 'Sistem'}.`,
+  });
+
+  return {
+    success: true,
+    maintenance: item,
+    message: 'Catatan perawatan berhasil diperbarui.',
+  };
+}
+
+export async function deleteAssetMaintenance(
+  id: number,
+  actor?: UserSession
+): Promise<{ success: boolean; message?: string }> {
+  await initializeMemoryStore();
+
+  if (actor && !hasPermission(actor.role, 'asset.delete') && actor.role !== 'SUPER_ADMIN' && actor.role !== 'OPERATOR') {
+    return { success: false, message: 'Role Anda tidak memiliki izin untuk menghapus catatan perawatan.' };
+  }
+
+  const idx = memoryStore.assetMaintenances.findIndex((m) => m.id === id);
+  if (idx === -1) return { success: false, message: 'Catatan perawatan tidak ditemukan.' };
+
+  const item = memoryStore.assetMaintenances[idx];
+  const asset = memoryStore.assets.find((a) => a.id === item.asset_id);
+
+  const scope = getDataScope(actor);
+  if (scope.isScoped && scope.jurusanKode && asset && asset.jurusan_kode !== scope.jurusanKode) {
+    return { success: false, message: `Anda hanya dapat menghapus catatan perawatan di jurusan Anda sendiri (${scope.jurusanKode}).` };
+  }
+
+  memoryStore.assetMaintenances.splice(idx, 1);
+
+  await logAudit({
+    user_id: actor?.id,
+    user_name: actor?.name,
+    user_role: actor?.role,
+    action: 'ASSET_MAINTENANCE_DELETED',
+    target: 'MAINTENANCE',
+    target_id: String(id),
+    description: `Catatan perawatan #${id} dihapus oleh ${actor?.name || 'Sistem'}.`,
+  });
+
+  return { success: true, message: 'Catatan perawatan berhasil dihapus.' };
 }
 
 // ----------------------------------------------------
@@ -2074,7 +3010,7 @@ export async function getInventoryStats(user?: UserSession | null): Promise<Stat
         id: ag.id,
         kode: ag.kode_kelompok,
         nama: ag.nama_barang,
-        kategori: ag.kategori_nama || 'Umum',
+        kategori: ag.jurusan_kode || 'Aset',
         jumlah: available,
       });
     }
@@ -2124,16 +3060,30 @@ export async function getInventoryStats(user?: UserSession | null): Promise<Stat
 // ----------------------------------------------------
 
 export function mapAssetToLegacyBarang(a: AssetData): Barang {
+  const parts = a.kode_barang.split('-');
+  const groupCode = parts.length >= 4 ? `${parts[0]}-${parts[1]}-${parts[2]}` : a.kode_barang;
+
   return {
     id: a.id,
     kode: a.kode_barang,
+    kode_unit: a.kode_barang,
+    kode_kelompok: groupCode,
     nama: a.nama_barang || 'Barang',
-    kategori: a.kategori || 'Umum',
     jumlah: 1,
     kondisi: a.kondisi === 'BAIK' ? 'Baik' : a.kondisi === 'RUSAK_RINGAN' ? 'Rusak Ringan' : 'Rusak Berat',
     status: a.status,
     jurusan: a.jurusan_kode,
+    jurusan_nama: a.jurusan_nama,
     ruangan: a.ruangan_nama || undefined,
+    ruangan_id: a.ruangan_id,
+    merk: a.merk || undefined,
+    tipe: a.tipe || undefined,
+    nomor_seri: a.nomor_seri || undefined,
+    nomor_unit: a.nomor_unit,
+    tahun_perolehan: a.tahun_perolehan || undefined,
+    sumber_dana: a.sumber_dana || undefined,
+    harga_perolehan: a.harga_perolehan || undefined,
+    keterangan: a.keterangan || undefined,
     created_at: a.created_at,
     updated_at: a.updated_at,
   };

@@ -12,6 +12,7 @@ interface DialogProps {
   children?: React.ReactNode;
   footer?: React.ReactNode;
   variant?: 'default' | 'danger' | 'info';
+  className?: string;
 }
 
 export const Dialog: React.FC<DialogProps> = ({
@@ -22,6 +23,7 @@ export const Dialog: React.FC<DialogProps> = ({
   children,
   footer,
   variant = 'default',
+  className = '',
 }) => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -55,7 +57,7 @@ export const Dialog: React.FC<DialogProps> = ({
       />
 
       {/* Dialog Window */}
-      <div className="relative z-10 w-full max-w-md bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-sm p-4 shadow-sm">
+      <div className={`relative z-10 w-full max-w-md bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-sm p-4 shadow-sm ${className}`}>
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex items-center gap-2.5">
             {variant === 'danger' && (
