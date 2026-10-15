@@ -249,7 +249,7 @@ export default function PengaturanPage() {
           <div className="grid grid-cols-2 gap-2 text-neutral-600 dark:text-neutral-300">
             <div className="p-2 bg-neutral-50 dark:bg-neutral-800/40 rounded-sm border border-neutral-200 dark:border-neutral-800">
               <span className="text-neutral-400 block text-[10px]">Framework</span>
-              <strong className="text-neutral-900 dark:text-white">Next.js App Router</strong>
+              <strong className="text-neutral-900 dark:text-white">Web App Architecture</strong>
             </div>
             <div className="p-2 bg-neutral-50 dark:bg-neutral-800/40 rounded-sm border border-neutral-200 dark:border-neutral-800">
               <span className="text-neutral-400 block text-[10px]">Language & Styling</span>

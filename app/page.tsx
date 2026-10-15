@@ -18,6 +18,7 @@ import { StatsData } from '@/lib/types';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { QrScannerModal } from '@/components/qr/QrScannerModal';
+import { BackgroundRippleEffect } from '@/components/ui/BackgroundRippleEffect';
 import { useAuth } from '@/lib/auth-context';
 
 export default function LandingPage() {
@@ -56,9 +57,10 @@ export default function LandingPage() {
   const barangBaru = stats?.barangBaru ?? stats?.kondisiCount?.Baru ?? 0;
 
   return (
-    <div className="py-4 sm:py-8 space-y-8 sm:space-y-12">
-      {/* Hero Section */}
-      <section className="text-center space-y-4 max-w-xl mx-auto pt-2 sm:pt-4">
+    <BackgroundRippleEffect className="rounded-sm p-2 sm:p-4 -m-2 sm:-m-4">
+      <div className="py-4 sm:py-8 space-y-8 sm:space-y-12">
+        {/* Hero Section */}
+        <section className="text-center space-y-4 max-w-xl mx-auto pt-2 sm:pt-4">
         {/* Brand Badge */}
         <div className="inline-flex items-center gap-2 px-3 py-1 bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-sm text-xs font-mono text-neutral-800 dark:text-neutral-200">
           <Package className="w-3.5 h-3.5 stroke-[2]" />
@@ -277,6 +279,7 @@ export default function LandingPage() {
         isOpen={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
       />
-    </div>
+      </div>
+    </BackgroundRippleEffect>
   );
 }

@@ -18,3 +18,30 @@
   outline: 2px solid #000000;
   outline-offset: 1px;
 }
+
+@keyframes ripplePulse {
+  0% {
+    background-color: transparent;
+    transform: scale(1);
+  }
+  30% {
+    background-color: rgba(140, 140, 140, 0.18);
+    transform: scale(1.04);
+  }
+  100% {
+    background-color: transparent;
+    transform: scale(1);
+  }
+}
+
+/* Hide Next.js dev indicator logo & devtools overlay */
+nextjs-portal,
+[data-nextjs-dev-overlay],
+[data-nextjs-toast],
+div[data-nextjs-dialog-overlay],
+#nextjs-dev-indicator,
+#__next-build-watcher {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}

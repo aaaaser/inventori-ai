@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/Button';
 import { BarangCard } from '@/components/barang/BarangCard';
 import { Dialog } from '@/components/ui/Dialog';
 import { QrScannerModal } from '@/components/qr/QrScannerModal';
+import { BackgroundRippleEffect } from '@/components/ui/BackgroundRippleEffect';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Loading } from '@/components/ui/Loading';
 import { useToast } from '@/components/ui/Toast';
@@ -129,9 +130,10 @@ export default function DashboardPage() {
   const canCreateAsset = can('asset.create');
 
   return (
-    <div className="space-y-6">
-      {/* App Header */}
-      <header className="space-y-1 pb-4 border-b border-neutral-200 dark:border-neutral-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <BackgroundRippleEffect className="rounded-sm p-3 sm:p-5 -m-2 sm:-m-4">
+      <div className="space-y-6">
+        {/* App Header */}
+        <header className="space-y-1 pb-4 border-b border-neutral-200/80 dark:border-neutral-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900 dark:text-white font-mono">
@@ -401,6 +403,7 @@ export default function DashboardPage() {
         isOpen={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
       />
-    </div>
+      </div>
+    </BackgroundRippleEffect>
   );
 }
