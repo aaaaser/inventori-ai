@@ -152,7 +152,7 @@ export const MoreBottomSheet: React.FC<MoreBottomSheetProps> = ({
 
         {/* Footer */}
         <div className="p-2.5 border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 flex items-center justify-between text-[11px] text-neutral-500 dark:text-neutral-400">
-          <span>Manajemen Barang (8 Menu)</span>
+          <span>Fitur Tambahan ({items.length} Menu)</span>
           <span className="font-mono text-[10px]">Sistem Inventaris Sekolah</span>
         </div>
       </div>

@@ -8,19 +8,19 @@ export default function BantuanPage() {
   const faqs = [
     {
       q: 'Bagaimana cara menambahkan barang baru?',
-      a: 'Pilih menu "Tambah" pada navigasi bawah atau tombol "+ Tambah Barang" di halaman Home/Barang. Masukkan kode unik, nama, kategori, jumlah unit (≥ 0), dan kondisi barang, lalu klik Simpan.',
+      a: 'Fitur Tambah Barang dapat diakses oleh pengguna dengan hak akses Super Admin dan Laboran melalui menu "Tambah" atau tombol "+ Tambah Barang" di halaman Data Barang. Masukkan kode unik, nama, kategori, jurusan, jumlah unit (≥ 0), dan kondisi barang, lalu klik Simpan.',
     },
     {
       q: 'Apakah kode barang boleh sama / duplikat?',
       a: 'Tidak boleh. Sistem secara otomatis memeriksa keunikan kode barang (misalnya ELK-001) baik di database Neon PostgreSQL maupun fallback memory.',
     },
     {
-      q: 'Bagaimana cara menghubungkan Neon PostgreSQL?',
-      a: 'Buka menu Pengaturan, pastikan environment variable DATABASE_URL sudah diisi dengan Connection String dari Neon Console. Drizzle ORM akan otomatis menggunakan koneksi database aktif.',
+      q: 'Siapa yang dapat mengakses menu Pengguna (Users) dan Pengaturan?',
+      a: 'Menu Users dan Pengaturan khusus diperuntukkan bagi Super Admin untuk menjaga integritas konfigurasi database dan manajemen akun. Pengguna dengan peran Kakom, Sarpras, Operator, Laboran, dan Kepala Sekolah tidak dapat mengakses kedua menu ini.',
     },
     {
       q: 'Bagaimana sistem navigasi More bekerja?',
-      a: 'Navigasi dirancang data-driven. 4 menu utama selalu berada di bar bawah, sementara menu tambahan seperti Kategori, Users, Aktivitas, Notifikasi, dan Bantuan dapat diakses instan melalui tombol More.',
+      a: 'Navigasi dirancang data-driven berbasis role (RBAC). 4 menu utama selalu berada di bar bawah, sementara menu tambahan disaring sesuai hak akses pengguna melalui tombol More.',
     },
   ];
 

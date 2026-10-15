@@ -119,15 +119,17 @@ export const ProfileDropdown: React.FC = () => {
                 <span>Profil Saya</span>
               </Link>
 
-              <Link
-                id="menu-settings-link"
-                href="/pengaturan"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:text-neutral-950 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-sm transition-colors"
-              >
-                <Settings className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
-                <span>Pengaturan</span>
-              </Link>
+              {user?.role === 'SUPER_ADMIN' && (
+                <Link
+                  id="menu-settings-link"
+                  href="/pengaturan"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:text-neutral-950 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-sm transition-colors"
+                >
+                  <Settings className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
+                  <span>Pengaturan</span>
+                </Link>
+              )}
             </div>
 
             {/* Logout Action */}

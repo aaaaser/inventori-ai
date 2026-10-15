@@ -933,8 +933,8 @@ export async function resetUserPassword(
   actor?: UserSession
 ): Promise<{ success: boolean; message?: string }> {
   await initializeMemoryStore();
-  if (actor && !hasPermission(actor.role, 'user.update') && actor.role !== 'SUPER_ADMIN') {
-    return { success: false, message: 'Hanya Super Admin/Operator yang dapat mereset password.' };
+  if (actor && actor.role !== 'SUPER_ADMIN') {
+    return { success: false, message: 'Hanya Super Admin yang dapat mereset password.' };
   }
 
   const u = memoryStore.users.find((item) => item.id === userId);

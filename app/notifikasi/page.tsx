@@ -230,7 +230,7 @@ export default function NotifikasiPage() {
                     <h3 className="text-xs font-bold text-neutral-900 dark:text-neutral-100 mt-1">
                       {notif.title}
                     </h3>
-                    <p className="text-[11px] text-neutral-600 dark:text-neutral-400 mt-0.5 leading-relaxed">
+                    <p className="text-[11px] text-neutral-600 dark:text-neutral-400 mt-0.5 leading-relaxed text-justify">
                       {notif.message}
                     </p>
                   </div>

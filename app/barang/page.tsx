@@ -66,7 +66,6 @@ export default function BarangPage() {
   const isScoped = currentUser?.role === 'KAKOM' || currentUser?.role === 'LABORAN';
   const canAddBarang =
     currentUser?.role === 'SUPER_ADMIN' ||
-    currentUser?.role === 'OPERATOR' ||
     currentUser?.role === 'LABORAN';
 
   return (

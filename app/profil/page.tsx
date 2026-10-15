@@ -17,6 +17,7 @@ import {
   FileText,
   Bell,
   ArrowLeft,
+  ClipboardList,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/Button';
@@ -272,15 +273,27 @@ export default function ProfilPage() {
             </span>
           </Link>
 
-          <Link
-            href="/pengaturan"
-            className="p-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-sm hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors flex flex-col items-center justify-center text-center gap-1.5"
-          >
-            <FileText className="w-4 h-4 text-neutral-700 dark:text-neutral-300" />
-            <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
-              Pengaturan
-            </span>
-          </Link>
+          {user?.role === 'SUPER_ADMIN' ? (
+            <Link
+              href="/pengaturan"
+              className="p-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-sm hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors flex flex-col items-center justify-center text-center gap-1.5"
+            >
+              <FileText className="w-4 h-4 text-neutral-700 dark:text-neutral-300" />
+              <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
+                Pengaturan
+              </span>
+            </Link>
+          ) : (
+            <Link
+              href="/peminjaman"
+              className="p-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-sm hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors flex flex-col items-center justify-center text-center gap-1.5"
+            >
+              <ClipboardList className="w-4 h-4 text-neutral-700 dark:text-neutral-300" />
+              <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
+                Peminjaman
+              </span>
+            </Link>
+          )}
         </div>
       </div>
     </div>

@@ -326,8 +326,8 @@ export default function DashboardPage() {
               <EmptyState
                 title="Belum ada barang di sistem"
                 description="Database inventaris masih kosong. Tambahkan barang baru atau sinkronkan data sekolah."
-                actionLabel="+ Tambah Barang Baru"
-                onAction={() => (window.location.href = '/barang/tambah')}
+                actionLabel={canCreateAsset ? "+ Tambah Barang Baru" : undefined}
+                onAction={canCreateAsset ? () => (window.location.href = '/barang/tambah') : undefined}
               />
             ) : (
               <div className="space-y-2.5">

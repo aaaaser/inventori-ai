@@ -12,6 +12,8 @@ import {
   LucideIcon,
 } from 'lucide-react';
 
+import { UserRole } from '@/lib/rbac';
+
 export interface NavItem {
   id: string;
   label: string;
@@ -20,12 +22,15 @@ export interface NavItem {
   primary?: boolean;
   badge?: string | number;
   description?: string;
+  allowedRoles?: UserRole[];
 }
 
 /**
  * Konfigurasi Menu Navigasi Data-Driven
  * - 4 Menu Utama di Bottom Navigation Bar
  * - Menu Tambahan di dalam Bottom Sheet (› More)
+ * - Menu tambah: hanya untuk SUPER_ADMIN dan LABORAN
+ * - Menu users & pengaturan: hanya untuk SUPER_ADMIN
  */
 export const navigationItems: NavItem[] = [
   {
@@ -67,6 +72,7 @@ export const navigationItems: NavItem[] = [
     icon: Plus,
     primary: false,
     description: 'Input barang baru ke sistem',
+    allowedRoles: ['SUPER_ADMIN', 'LABORAN'],
   },
   {
     id: 'kategori',
@@ -83,6 +89,7 @@ export const navigationItems: NavItem[] = [
     icon: Users,
     primary: false,
     description: 'Manajemen pengguna & hak akses (RBAC)',
+    allowedRoles: ['SUPER_ADMIN'],
   },
   {
     id: 'aktivitas',
@@ -108,19 +115,29 @@ export const navigationItems: NavItem[] = [
     icon: Settings,
     primary: false,
     description: 'Koneksi database & preferensi',
+    allowedRoles: ['SUPER_ADMIN'],
   },
 ];
 
-export function getPartitionedNavigation(items: NavItem[] = navigationItems) {
-  if (items.length <= 4) {
+export function getPartitionedNavigation(role?: UserRole | null, items: NavItem[] = navigationItems) {
+  // Filter items berdasarkan hak akses role pengguna:
+  // - users dan pengaturan hanya muncul untuk SUPER_ADMIN
+  // - tambah barang hanya muncul untuk SUPER_ADMIN dan LABORAN
+  const filtered = items.filter((item) => {
+    if (!item.allowedRoles) return true;
+    if (!role) return false;
+    return item.allowedRoles.includes(role);
+  });
+
+  if (filtered.length <= 4) {
     return {
-      primaryItems: items,
+      primaryItems: filtered,
       moreItems: [],
       hasMore: false,
     };
   }
 
-  const explicitlyPrimary = items.filter((item) => item.primary);
+  const explicitlyPrimary = filtered.filter((item) => item.primary);
 
   let primaryItems: NavItem[] = [];
   let moreItems: NavItem[] = [];
@@ -128,10 +145,10 @@ export function getPartitionedNavigation(items: NavItem[] = navigationItems) {
   if (explicitlyPrimary.length > 0 && explicitlyPrimary.length <= 4) {
     primaryItems = explicitlyPrimary;
     const primaryIds = new Set(primaryItems.map((i) => i.id));
-    moreItems = items.filter((item) => !primaryIds.has(item.id));
+    moreItems = filtered.filter((item) => !primaryIds.has(item.id));
   } else {
-    primaryItems = items.slice(0, 4);
-    moreItems = items.slice(4);
+    primaryItems = filtered.slice(0, 4);
+    moreItems = filtered.slice(4);
   }
 
   return {

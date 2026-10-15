@@ -85,7 +85,9 @@ export type Permission =
   | 'master.delete'
   | 'report.view'
   | 'report.export'
-  | 'audit.view';
+  | 'audit.view'
+  | 'settings.view'
+  | 'settings.manage';
 
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   SUPER_ADMIN: [
@@ -117,6 +119,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'report.view',
     'report.export',
     'audit.view',
+    'settings.view',
+    'settings.manage',
   ],
   OPERATOR: [
     'dashboard.view',
@@ -125,10 +129,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'borrowing.view',
     'borrowing.handover',
     'borrowing.return',
-    'user.view',
-    'user.create',
-    'user.update',
-    'user.delete',
     'master.view',
     'master.create',
     'master.update',

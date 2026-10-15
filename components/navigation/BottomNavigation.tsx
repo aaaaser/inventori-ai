@@ -9,18 +9,20 @@ import {
   getPartitionedNavigation,
   isRouteActive,
 } from '@/lib/navigation-config';
+import { useAuth } from '@/lib/auth-context';
 import { MoreBottomSheet } from './MoreBottomSheet';
 
 export const BottomNavigation: React.FC = () => {
   const pathname = usePathname();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const { user } = useAuth();
 
   // Hide on Landing Page (/) and Login Page (/login)
   if (pathname === '/' || pathname === '/login') {
     return null;
   }
 
-  const { primaryItems, moreItems, hasMore } = getPartitionedNavigation(navigationItems);
+  const { primaryItems, moreItems, hasMore } = getPartitionedNavigation(user?.role);
 
   // Check if current route matches any of the 'More' items
   const isMoreActive = moreItems.some((item) => isRouteActive(pathname, item.href));

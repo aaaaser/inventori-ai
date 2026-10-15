@@ -8,10 +8,14 @@ import { Button } from '@/components/ui/Button';
 import { Loading } from '@/components/ui/Loading';
 import { KATEGORI_OPTIONS } from '@/lib/utils';
 import { Barang } from '@/lib/types';
+import { useAuth } from '@/lib/auth-context';
 
 export default function KategoriPage() {
+  const { user } = useAuth();
   const [items, setItems] = useState<Barang[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const canAddBarang = user?.role === 'SUPER_ADMIN' || user?.role === 'LABORAN';
 
   const fetchItems = async () => {
     try {
@@ -53,15 +57,17 @@ export default function KategoriPage() {
           </p>
         </div>
 
-        <Link href="/barang/tambah">
-          <Button
-            variant="primary"
-            size="sm"
-            leftIcon={<Plus className="w-3.5 h-3.5" />}
-          >
-            Tambah Barang
-          </Button>
-        </Link>
+        {canAddBarang && (
+          <Link href="/barang/tambah">
+            <Button
+              variant="primary"
+              size="sm"
+              leftIcon={<Plus className="w-3.5 h-3.5" />}
+            >
+              Tambah Barang
+            </Button>
+          </Link>
+        )}
       </header>
 
       {isLoading ? (

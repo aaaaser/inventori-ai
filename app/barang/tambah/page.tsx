@@ -3,17 +3,21 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ShieldAlert } from 'lucide-react';
 import { BarangFormData } from '@/lib/types';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { BarangForm } from '@/components/barang/BarangForm';
 import { useToast } from '@/components/ui/Toast';
+import { useAuth } from '@/lib/auth-context';
 
 export default function TambahBarangPage() {
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { showToast } = useToast();
+
+  const canAdd = user?.role === 'SUPER_ADMIN' || user?.role === 'LABORAN';
 
   const handleSubmit = async (formData: BarangFormData) => {
     setIsLoading(true);
@@ -42,6 +46,39 @@ export default function TambahBarangPage() {
       setIsLoading(false);
     }
   };
+
+  if (!canAdd) {
+    return (
+      <div className="space-y-4">
+        <header className="pb-3 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between gap-3">
+          <Link href="/barang">
+            <Button variant="ghost" size="sm" leftIcon={<ArrowLeft className="w-4 h-4" />}>
+              Kembali ke Data Barang
+            </Button>
+          </Link>
+        </header>
+
+        <Card className="p-6 text-center space-y-3 max-w-md mx-auto my-8">
+          <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400 mx-auto flex items-center justify-center">
+            <ShieldAlert className="w-6 h-6" />
+          </div>
+          <h2 className="text-base font-bold text-neutral-900 dark:text-white">
+            Akses Dibatasi
+          </h2>
+          <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
+            Menu dan formulir Tambah Barang hanya berlaku untuk pengguna dengan hak akses <strong>Super Admin</strong> dan <strong>Laboran</strong>.
+          </p>
+          <div className="pt-2">
+            <Link href="/dashboard">
+              <Button variant="primary" size="sm">
+                Kembali ke Dashboard
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

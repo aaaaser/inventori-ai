@@ -16,6 +16,8 @@ import {
   User,
   Shield,
   ArrowRight,
+  ShieldAlert,
+  ArrowLeft,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -54,8 +56,10 @@ export default function PengaturanPage() {
   };
 
   useEffect(() => {
-    checkDb();
-  }, []);
+    if (user?.role === 'SUPER_ADMIN') {
+      checkDb();
+    }
+  }, [user?.role]);
 
   const handleSeed = async () => {
     try {
@@ -100,6 +104,41 @@ export default function PengaturanPage() {
       setIsExporting(false);
     }
   };
+
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+
+  if (user && !isSuperAdmin) {
+    return (
+      <div className="space-y-4">
+        <header className="pb-3 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between gap-3">
+          <Link href="/dashboard">
+            <Button variant="ghost" size="sm" leftIcon={<ArrowLeft className="w-4 h-4" />}>
+              Kembali ke Dashboard
+            </Button>
+          </Link>
+        </header>
+
+        <Card className="p-6 text-center space-y-3 max-w-md mx-auto my-8">
+          <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400 mx-auto flex items-center justify-center">
+            <ShieldAlert className="w-6 h-6" />
+          </div>
+          <h2 className="text-base font-bold text-neutral-900 dark:text-white">
+            Akses Khusus Super Admin
+          </h2>
+          <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
+            Menu <strong>Pengaturan & Konfigurasi Sistem</strong> hanya dapat diakses oleh akun dengan peran <strong>Super Admin</strong>. Peran Kakom, Sarpras, Operator, Laboran, dan Kepala Sekolah tidak memiliki izin akses ke halaman ini.
+          </p>
+          <div className="pt-2">
+            <Link href="/dashboard">
+              <Button variant="primary" size="sm">
+                Kembali ke Dashboard
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
